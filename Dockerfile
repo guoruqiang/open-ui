@@ -25,6 +25,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
+# 设置Node.js的内存限制
+ENV NODE_OPTIONS=--max_old_space_size=4096
+
 COPY . .
 ENV APP_BUILD_HASH=${BUILD_HASH}
 RUN npm run build

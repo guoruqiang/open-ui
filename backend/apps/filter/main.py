@@ -342,7 +342,7 @@ async def content_filter_message(payload: dict, content: str, user):
 
             if not app.state.config.ENABLE_REPLACE_FILTER_WORDS:
                 detail_message = (
-                    f"Yubb Chat: 您的消息包含敏感词语（`{filter_word}`）无法发送。请创建新话题并重试。"
+                    f"GameTeam Chat: 您的消息包含敏感词语（`{filter_word}`）无法发送。请创建新话题并重试。"
                 )
                 raise HTTPException(
                     status_code=503, detail=detail_message
