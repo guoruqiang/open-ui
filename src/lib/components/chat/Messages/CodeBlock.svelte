@@ -1,18 +1,20 @@
 <script lang="ts">
-	import { copyToClipboard } from '$lib/utils';
 	import hljs from 'highlight.js';
-	import 'highlight.js/styles/github-dark.min.css';
 	import { loadPyodide } from 'pyodide';
+	import { getContext, getAllContexts } from 'svelte';
+	import { copyToClipboard } from '$lib/utils';
+
+	import 'highlight.js/styles/github-dark.min.css';
+
 	import PyodideWorker from '$lib/workers/pyodide.worker?worker';
 	import { loadSandpackClient } from '@codesandbox/sandpack-client';
-	import { getContext } from 'svelte';
+
+	const i18n = getContext('i18n');
 
 	export let id = '';
 
 	export let lang = '';
 	export let code = '';
-
-	const i18n = getContext('i18n');
 
 	let highlightedCode = null;
 	let executing = false;
@@ -278,23 +280,21 @@ __builtins__.input = input`);
 		<div class="flex items-center">
 			{#if lang.toLowerCase() === 'python' || lang.toLowerCase() === 'py' || (lang === '' && checkPythonCode(code))}
 				{#if executing}
-					<div class="copy-code-button bg-none border-none p-1 cursor-not-allowed">Running</div>
+					<div class="copy-code-button bg-none border-none p-1 cursor-not-allowed">
+						{$i18n.t('Running')}
+					</div>
 				{:else}
 					<button
 						class="copy-code-button bg-none border-none p-1"
 						on:click={() => {
 							executePython(code);
-						}}>Run</button
+						}}>{$i18n.t('Run')}</button
 					>
 				{/if}
 			{/if}
-			<button class="copy-code-button bg-none border-none p-1" on:click={copyCode}>
-				{#if copied}
-					Copied
-				{:else}
-					Copy Code
-				{/if}
-			</button>
+			<button class="copy-code-button bg-none border-none p-1" on:click={copyCode}
+				>{copied ? $i18n.t('Copied') : $i18n.t('Copy Code')}</button
+			>
 		</div>
 	</div>
 
