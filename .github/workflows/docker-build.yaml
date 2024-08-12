@@ -59,11 +59,11 @@ jobs:
         with:
           images: ${{ env.FULL_IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
-            type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
+            type=raw,value=latest
+            type=raw,value=${{ env.IMAGE_DATE_TAG }}
           flavor: |
             latest=${{ github.ref == 'refs/heads/main' }}
 
@@ -144,9 +144,7 @@ jobs:
         with:
           images: ${{ env.FULL_IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
             type=ref,event=tag
-            type=sha,prefix=git-
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest
