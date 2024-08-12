@@ -10,7 +10,8 @@ on:
       - v*
 
 env:
-  REGISTRY: ghcr.io
+  REGISTRY: docker.io
+  IMAGE_NAME: 'open-webui'
 
 jobs:
   build-main-image:
@@ -26,14 +27,10 @@ jobs:
           # - linux/arm64
 
     steps:
-      # GitHub Packages requires the entire repository name to be in lowercase
-      # although the repository owner has a lowercase username, this prevents some people from running actions after forking
       - name: Set repository and image name to lowercase
         run: |
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
-          echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
-        env:
-          IMAGE_NAME: '${{ github.repository }}'
+          echo "FULL_IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/${IMAGE_NAME,,}" >>${GITHUB_ENV}
 
       - name: Prepare
         run: |
@@ -53,8 +50,8 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Extract metadata for Docker images (default latest tag)
         id: meta
@@ -115,14 +112,10 @@ jobs:
     runs-on: ubuntu-latest
     needs: [ build-main-image ]
     steps:
-      # GitHub Packages requires the entire repository name to be in lowercase
-      # although the repository owner has a lowercase username, this prevents some people from running actions after forking
       - name: Set repository and image name to lowercase
         run: |
           echo "IMAGE_NAME=${IMAGE_NAME,,}" >>${GITHUB_ENV}
-          echo "FULL_IMAGE_NAME=ghcr.io/${IMAGE_NAME,,}" >>${GITHUB_ENV}
-        env:
-          IMAGE_NAME: '${{ github.repository }}'
+          echo "FULL_IMAGE_NAME=${{ env.REGISTRY }}/${{ github.repository_owner }}/${IMAGE_NAME,,}" >>${GITHUB_ENV}
 
       - name: Download digests
         uses: actions/download-artifact@v4
@@ -138,9 +131,9 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-          
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
       - name: Extract metadata (tags) for Docker images
         run: |
           echo "IMAGE_DATE_TAG=$(date +'%Y%m%d')" >> $GITHUB_ENV
