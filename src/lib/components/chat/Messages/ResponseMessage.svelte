@@ -111,7 +111,7 @@
 					// • auto-render specific keys, e.g.:
 					delimiters: [
 						{ left: '$$', right: '$$', display: true },
-						{ left: '$ ', right: ' $', display: false },
+						{ left: '$', right: '$', display: false },
 						{ left: '\\pu{', right: '}', display: false },
 						{ left: '\\ce{', right: '}', display: false },
 						{ left: '\\(', right: '\\)', display: false },
