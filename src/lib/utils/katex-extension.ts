@@ -5,10 +5,10 @@ const inlineRuleNonStandard = /^(\${1,2})(?!\$)((?:\\.|[^\\\n])*?(?:\\.|[^\\\n\$
 
 const blockRule = /^(\${1,2})\n((?:\\[^]|[^\\])+?)\n\1(?:\n|$)/;
 
-export default function(options = {}) {
+export default function (options = {}) {
   return {
     extensions: [
-      inlineKatex(options, createRenderer(options, false)),
+      inlineKatex(options, createRenderer(options, true)),
       blockKatex(options, createRenderer(options, true)),
     ],
   };
