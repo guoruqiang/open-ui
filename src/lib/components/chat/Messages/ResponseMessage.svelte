@@ -89,38 +89,55 @@
 
 	$: (async () => {
 		if (message?.content) {
-			tokens = marked.lexer(
-				replaceTokens(sanitizeResponseContent(message?.content), model?.name, $user?.name)
-			);
+			await updateMessageContent();
 		}
 	})();
 
-	$: if (message?.done ?? false) {
-		renderLatex();
-	}
+	const updateMessageContent = async () => {
+		if (message?.content) {
+			message.content = sanitizeResponseContent(message?.content);
+			// await tick();
+			// await renderLatex();
+			tokens = marked.lexer(replaceTokens(message.content, model?.name, $user?.name));
+		}
+		if (message?.done ?? false) {
+			renderLatex();
+		}
+	};
 
-	const renderLatex = () => {
-		let chatMessageElements = document
-			.getElementById(`message-${message.id}`)
-			?.getElementsByClassName('chat-assistant');
-
-		if (chatMessageElements) {
-			for (const element of chatMessageElements) {
-				auto_render(element, {
-					// customised options
-					// • auto-render specific keys, e.g.:
-					delimiters: [
-						{ left: '$$', right: '$$', display: true },
-						{ left: '$', right: '$', display: false },
-						{ left: '\\pu{', right: '}', display: false },
-						{ left: '\\ce{', right: '}', display: false },
-						{ left: '\\(', right: '\\)', display: false },
-						{ left: '\\[', right: '\\]', display: true }
-					],
-					// • rendering keys, e.g.:
-					throwOnError: false
-				});
+	const renderLatex = async () => {
+		try {
+			const chatMessageContainer = document.getElementById(`message-${message.id}`);
+			if (!chatMessageContainer) {
+				console.warn(`未找到 id 为 'message-${message.id}' 的元素。`);
+				return;
 			}
+
+			const chatMessageElements = chatMessageContainer.getElementsByClassName('chat-assistant');
+			if (!chatMessageElements || chatMessageElements.length === 0) {
+				console.warn(`在容器中未找到带有 'chat-assistant' 类的元素。`);
+				return;
+			}
+
+			for (const element of chatMessageElements) {
+				try {
+					auto_render(element, {
+						delimiters: [
+							{ left: '$$', right: '$$', display: true },
+							{ left: '$', right: '$', display: false },
+							{ left: '\\pu{', right: '}', display: false },
+							{ left: '\\ce{', right: '}', display: false },
+							{ left: '\\(', right: '\\)', display: false },
+							{ left: '\\[', right: '\\]', display: true }
+						],
+						throwOnError: false
+					});
+				} catch (err) {
+					console.error(`渲染 LaTeX 时出错，元素：`, element, err);
+				}
+			}
+		} catch (err) {
+			console.error('renderLatex 函数中的错误:', err);
 		}
 	};
 
