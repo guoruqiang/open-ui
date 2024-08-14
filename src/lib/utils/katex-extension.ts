@@ -11,7 +11,7 @@ export default function (options = {}) {
 }
 
 function createRenderer(options, newlineAfter) {
-	return (token) => katex.renderToString(token.text, { ...options, displayMode: token.displayMode }) + (newlineAfter ? '\n' : '');
+	return (token) => katex.renderToString(token.text, { ...options, displayMode: newlineAfter });
 }
 
 function inlineKatex(options, renderer) {
@@ -22,12 +22,12 @@ function inlineKatex(options, renderer) {
 			return src.indexOf('$')
 		},
 		tokenizer(src: string) {
-			const match = src.match(/^\$+([^$\n]+?)\$+/)
+			const match = src.match(/^\$+(?!\$+?$)([^$\n]+?)\$+/)
 			if (match) {
 				return {
 					type: 'inlineKatex',
 					raw: match[0],
-					text: match[1].trim(),
+					text: match[1].replace(/\s*\n\s*/g, ' ').trim(),
 					displayMode: match[0].startsWith('$$')
 				}
 			}
@@ -50,7 +50,7 @@ function blockKatex(options, renderer) {
 				return {
 					type: 'blockKatex',
 					raw: match[0],
-					text: match[1].trim(),
+					text: match[1].replace(/\s*\n\s*/g, ' ').trim(),
 					displayMode: match[0].startsWith('$$')
 				}
 			}
