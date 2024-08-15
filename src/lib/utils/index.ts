@@ -6,18 +6,22 @@ import { WEBUI_BASE_URL } from '$lib/constants';
 // Helper functions
 //////////////////////////
 
-// function escapeDollarNumber(text: string) {
-// 	let escapedText = '';
-// 	for (let i = 0; i < text.length; i += 1) {
-// 		let char = text[i];
-// 		const nextChar = text[i + 1] || ' ';
-// 		if (char === '$' && nextChar >= '0' && nextChar <= '9') {
-// 			char = '\\$';
-// 		}
-// 		escapedText += char;
-// 	}
-// 	return escapedText;
-// }
+const convertLatexToSingleLine = (content) => {
+	// Patterns to match multiline LaTeX blocks
+	const patterns = [
+		/(\$\$\s[\s\S]*?\s\$\$)/g, // Match $$ ... $$
+		/(\\\[[\s\S]*?\\\])/g, // Match \[ ... \]
+		/(\\begin\{[a-z]+\}[\s\S]*?\\end\{[a-z]+\})/g // Match \begin{...} ... \end{...}
+	];
+
+	patterns.forEach((pattern) => {
+		content = content.replace(pattern, (match) => {
+			return match.replace(/\s*\n\s*/g, ' ').trim();
+		});
+	});
+
+	return content;
+};
 
 function escapeBrackets(text: string) {
 	let cleanSquareBracket = '';
@@ -37,53 +41,6 @@ function escapeBrackets(text: string) {
 		return match.replace(/\s*\n\s*/g, ' ').trim();
 	});
 }
-
-const convertLatexToSingleLine = (content: string) => {
-	// Patterns to match multiline LaTeX blocks
-	const patterns = [
-		/(\$\$\s[\s\S]*?\s\$\$)/g, // Match $$ ... $$
-	];
-
-	patterns.forEach((pattern) => {
-		content = content.replace(pattern, (match) => {
-			return match.replace(/\s*\n\s*/g, ' ').trim();
-		});
-	});
-
-	return content;
-};
-
-export const sanitizeResponseContent = (content: string) => {
-	// replace single backslash with double backslash
-	content = content.replace(/\\\\/g, '\\\\\\\\');
-	content = convertLatexToSingleLine(escapeBrackets(content));
-
-	// First, temporarily replace valid <video> tags with a placeholder
-	const videoTagRegex = /<video\s+src="([^"]+)"\s+controls><\/video>/gi;
-	const placeholders: string[] = [];
-	content = content.replace(videoTagRegex, (_, src) => {
-		const placeholder = `{{VIDEO_${placeholders.length}}}`;
-		placeholders.push(`<video src="${src}" controls></video>`);
-		return placeholder;
-	});
-
-	// Now apply the sanitization to the rest of the content
-	content = content
-		.replace(/<\|[a-z]*$/, '')
-		.replace(/<\|[a-z]+\|$/, '')
-		.replace(/<$/, '')
-		.replaceAll(/<\|[a-z]+\|>/g, ' ')
-		// .replaceAll('<', '&lt;')
-		// .replaceAll('>', '&gt;')
-		.trim();
-
-	// Replace placeholders with original <video> tags
-	placeholders.forEach((placeholder, index) => {
-		content = content.replace(`{{VIDEO_${index}}}`, placeholder);
-	});
-
-	return content.trim();
-};
 
 export const replaceTokens = (content, char, user) => {
 	const charToken = /{{char}}/gi;
@@ -116,8 +73,24 @@ export const replaceTokens = (content, char, user) => {
 	return content;
 };
 
+export const sanitizeResponseContent = (content: string) => {
+	return content
+		.replace(/<\|[a-z]*$/, '')
+		.replace(/<\|[a-z]+\|$/, '')
+		.replace(/<$/, '')
+		.replaceAll(/<\|[a-z]+\|>/g, ' ')
+		// .replaceAll('<', '&lt;')
+		// .replaceAll('>', '&gt;')
+		.trim();
+};
+
+export const processResponseContent = (content: string) => {
+	content = convertLatexToSingleLine(escapeBrackets(content));
+	return content.trim();
+};
+
 export const revertSanitizedResponseContent = (content: string) => {
-	return content.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('\\\\', '\\');
+	return content.replaceAll('&lt;', '<').replaceAll('&gt;', '>');
 };
 
 export function unescapeHtml(html: string) {

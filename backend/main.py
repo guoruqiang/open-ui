@@ -21,7 +21,6 @@ from fastapi import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
 from sqlalchemy import text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -52,6 +51,10 @@ from apps.webui.main import (
     get_pipe_models,
     generate_function_chat_completion,
 )
+
+from pydantic import BaseModel
+from typing import Optional
+
 from apps.webui.models.auths import Auths
 from apps.webui.models.functions import Functions
 from apps.webui.models.models import Models
@@ -91,6 +94,7 @@ from config import (
     VERSION,
     MODEL_STATUS,
     LOBECHAT_URL,
+    MIDJOURNEY_URL,
     CHANGELOG,
     FRONTEND_BUILD_DIR,
     CACHE_DIR,
@@ -1101,7 +1105,8 @@ async def get_models(user=Depends(get_verified_user)):
     models = [
         model
         for model in models
-        if "pipeline" not in model or model["pipeline"].get("type", None) != "filter"
+        if ("pipeline" not in model or model["pipeline"].get("type", None) != "filter")
+        and not model.get("name", "").startswith("mj_")
     ]
 
     if app.state.config.ENABLE_MODEL_FILTER:
@@ -1942,7 +1947,7 @@ async def get_pipeline_valves(
                 res = r.json()
                 if "detail" in res:
                     detail = res["detail"]
-            except:
+            except Exception:
                 pass
 
         raise HTTPException(
@@ -2045,6 +2050,7 @@ async def get_app_config():
         "name": WEBUI_NAME,
         "model_status": MODEL_STATUS,
         "lobeChat_url": LOBECHAT_URL,
+        "midjourney_url": MIDJOURNEY_URL,
         "version": VERSION,
         "default_locale": str(DEFAULT_LOCALE),
         "default_models": webui_app.state.config.DEFAULT_MODELS,
@@ -2088,7 +2094,7 @@ async def get_model_filter_config(user=Depends(get_admin_user)):
 
 class ModelFilterConfigForm(BaseModel):
     enabled: bool
-    models: List[str]
+    models: list[str]
 
 
 @app.post("/api/config/model/filter")

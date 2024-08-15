@@ -1,4 +1,5 @@
 <script lang="ts">
+	import DOMPurify from 'dompurify';
 	import { onMount } from 'svelte';
 	import type { Token } from 'marked';
 	import { revertSanitizedResponseContent, unescapeHtml } from '$lib/utils';
@@ -26,7 +27,8 @@
 		</svelte:element>
 	{:else if token.type === 'code'}
 		<CodeBlock
-			{id}
+			id={`${id}-${tokenIdx}`}
+			{token}
 			lang={token?.lang ?? ''}
 			code={revertSanitizedResponseContent(token?.text ?? '')}
 		/>
@@ -90,7 +92,12 @@
 			</ul>
 		{/if}
 	{:else if token.type === 'html'}
-		{@html token.text}
+		{@const html = DOMPurify.sanitize(token.text)}
+		{#if html}
+			{@html html}
+		{:else}
+			{token.text}
+		{/if}
 	{:else if token.type === 'paragraph'}
 		<p>
 			<MarkdownInlineTokens id={`${id}-${tokenIdx}-p`} tokens={token.tokens ?? []} />
@@ -110,6 +117,13 @@
 			{unescapeHtml(token.text)}
 		{/if}
 	{:else if token.type === 'inlineKatex'}
+		{#if token.text}
+			<KatexRenderer
+				content={revertSanitizedResponseContent(token.text)}
+				displayMode={token?.displayMode ?? false}
+			/>
+		{/if}
+	{:else if token.type === 'blockKatex'}
 		{#if token.text}
 			<KatexRenderer
 				content={revertSanitizedResponseContent(token.text)}

@@ -2,9 +2,6 @@
 	import { toast } from 'svelte-sonner';
 	import dayjs from 'dayjs';
 	import { marked } from 'marked';
-	import tippy from 'tippy.js';
-	import auto_render from 'katex/dist/contrib/auto-render.mjs';
-	import mermaid from 'mermaid';
 
 	import { fade } from 'svelte/transition';
 	import { createEventDispatcher } from 'svelte';
@@ -21,8 +18,7 @@
 		approximateToHumanReadable,
 		extractSentences,
 		replaceTokens,
-		revertSanitizedResponseContent,
-		sanitizeResponseContent
+		processResponseContent
 	} from '$lib/utils';
 	import { WEBUI_BASE_URL } from '$lib/constants';
 
@@ -38,6 +34,7 @@
 	import WebSearchResults from './ResponseMessage/WebSearchResults.svelte';
 	import Sparkles from '$lib/components/icons/Sparkles.svelte';
 	import MarkdownTokens from './MarkdownTokens.svelte';
+	import auto_render from 'katex/dist/contrib/auto-render.mjs';
 
 	export let message;
 	export let siblings;
@@ -81,6 +78,7 @@
 	import 'katex/dist/katex.min.css';
 
 	import markedKatex from '$lib/utils/katex-extension';
+
 	const options = {
 		throwOnError: false
 	};
@@ -90,17 +88,17 @@
 	$: (async () => {
 		if (message?.content) {
 			tokens = marked.lexer(
-				replaceTokens(sanitizeResponseContent(message?.content), model?.name, $user?.name)
+				replaceTokens(processResponseContent(message?.content), model?.name, $user?.name)
 			);
+		}
+		if (message?.done ?? false) {
+			await renderLatex();
 		}
 	})();
 
-	$: if (message?.done ?? false) {
-		renderLatex();
-	}
-
 	const renderLatex = async () => {
 		try {
+			await tick();
 			const chatMessageContainer = document.getElementById(`message-${message.id}`);
 			if (!chatMessageContainer) {
 				console.warn(`未找到 id 为 'message-${message.id}' 的元素。`);
@@ -288,14 +286,12 @@
 		editedContent = '';
 
 		await tick();
-		renderLatex();
 	};
 
 	const cancelEditMessage = async () => {
 		edit = false;
 		editedContent = '';
 		await tick();
-		renderLatex();
 	};
 
 	const generateImage = async (message) => {
@@ -320,21 +316,11 @@
 	$: if (!edit) {
 		(async () => {
 			await tick();
-			renderLatex();
-
-			await mermaid.run({
-				querySelector: '.mermaid'
-			});
 		})();
 	}
 
 	onMount(async () => {
 		await tick();
-		renderLatex();
-
-		await mermaid.run({
-			querySelector: '.mermaid'
-		});
 	});
 </script>
 
@@ -370,7 +356,7 @@
 						{#each message.files as file}
 							<div>
 								{#if file.type === 'image'}
-									<Image src={file.url} isMarkdown={false} />
+									<Image src={file.url} />
 								{/if}
 							</div>
 						{/each}
