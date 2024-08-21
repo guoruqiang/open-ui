@@ -13,7 +13,7 @@ import os, shutil, logging, re
 from datetime import datetime
 
 from pathlib import Path
-from typing import Union, Sequence, Iterator, Any
+from typing import Any, Iterator, List, Optional, Sequence, Tuple, Union
 
 from chromadb.utils.batch_utils import create_batches
 from langchain_core.documents import Document
@@ -41,11 +41,12 @@ import validators
 import urllib.parse
 import socket
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 import mimetypes
 import uuid
 import json
+import random
 
 from apps.webui.models.documents import (
     Documents,
@@ -131,6 +132,8 @@ from config import (
     SERPER_API_KEY,
     SERPLY_API_KEY,
     TAVILY_API_KEY,
+    SILICONFLOW_API_BASE_URL,
+    SILICONFLOW_API_KEY,
     RAG_WEB_SEARCH_RESULT_COUNT,
     RAG_WEB_SEARCH_CONCURRENT_REQUESTS,
     RAG_EMBEDDING_OPENAI_BATCH_SIZE,
@@ -217,17 +220,76 @@ def update_embedding_model(
         app.state.sentence_transformer_ef = None
 
 
+class Reranking(BaseModel):
+    reranking_model: str = Field(..., description="The specific reranking model to use")
+    api_key: Optional[str] = Field(
+        None,
+        description="The API key (automatically set based on provider if not provided)",
+    )
+    url: Optional[str] = Field(
+        None,
+        description="The API base URL (automatically set based on provider if not provided)",
+    )
+
+    def __init__(self, **data: Any):
+        super().__init__(**data)
+        if self.url is None:
+            self.url = SILICONFLOW_API_BASE_URL
+
+        if self.api_key is None:
+            self.api_key = [key.strip() for key in SILICONFLOW_API_KEY.split(",") if key.strip() != '']
+
+    def predict(
+            self, query: str, docs: Sequence[Document], top_n: int, r_score: float
+    ) -> Optional[List[Tuple[str, float]]]:
+        """Sends a reranking request to the API and returns documents with scores."""
+        try:
+            selected_key = random.choice(self.api_key) if self.api_key else None
+            headers = {
+                "Content-Type": "application/json",
+                "Authorization": f"Bearer {selected_key}",
+            }
+            payload = {
+                "model": self.reranking_model,
+                "query": query,
+                "documents": [doc.page_content for doc in docs],
+                "top_n": top_n,
+            }
+            response = requests.post(
+                f"{self.url}/rerank", headers=headers, json=payload
+            )
+            response.raise_for_status()
+            data = response.json()
+            results = data.get("results", [])
+            docs_with_scores = [
+                (docs[i["index"]], i["relevance_score"]) for i in results
+            ]
+            if r_score is not None and r_score > 0:
+                docs_with_scores = [(d, s) for d, s in docs_with_scores if s >= r_score]
+            return docs_with_scores
+        except requests.RequestException as e:
+            print(f"Error in reranking request: {e}")
+        except KeyError as e:
+            print(f"Unexpected response format: missing key '{e}'")
+        except Exception as e:
+            print(f"Unexpected error: {e}")
+        return None
+
+
 def update_reranking_model(
         reranking_model: str,
         update_model: bool = False,
 ):
     if reranking_model:
-        import sentence_transformers
+        # import sentence_transformers
 
-        app.state.sentence_transformer_rf = sentence_transformers.CrossEncoder(
-            get_model_path(reranking_model, update_model),
-            device=DEVICE_TYPE,
-            trust_remote_code=RAG_RERANKING_MODEL_TRUST_REMOTE_CODE,
+        # app.state.sentence_transformer_rf = sentence_transformers.CrossEncoder(
+        #     get_model_path(reranking_model, update_model),
+        #     device=DEVICE_TYPE,
+        #     trust_remote_code=RAG_RERANKING_MODEL_TRUST_REMOTE_CODE,
+        # )
+        app.state.sentence_transformer_rf = Reranking(
+            reranking_model=reranking_model
         )
     else:
         app.state.sentence_transformer_rf = None
@@ -647,8 +709,8 @@ class QueryDocForm(BaseModel):
 
 @app.post("/query/doc")
 def query_doc_handler(
-    form_data: QueryDocForm,
-    user=Depends(get_verified_user),
+        form_data: QueryDocForm,
+        user=Depends(get_verified_user),
 ):
     try:
         if app.state.config.ENABLE_RAG_HYBRID_SEARCH:

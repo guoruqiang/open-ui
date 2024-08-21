@@ -477,7 +477,8 @@
 										: `${WEBUI_BASE_URL}/static/favicon.png`)}
 							/>
 							<div>
-								Talking to <span class=" font-medium">{atSelectedModel.name}</span>
+								<!-- Talking to <span class=" font-medium">{atSelectedModel.name}</span> -->
+								<span>{$i18n.t('Talking to ')}</span><strong>{atSelectedModel.name}</strong>
 							</div>
 						</div>
 						<div>
@@ -620,7 +621,14 @@
 													</button>
 												</div>
 											</div>
-										{:else}
+										{/if}
+									{/each}
+								</div>
+							{/if}
+							{#if files.length > 0}
+								<div class="mx-1 mt-2.5 mb-1 flex flex-wrap gap-2">
+									{#each files as file, fileIdx}
+										{#if file.type !== 'image'}
 											<FileItem
 												name={file.name}
 												type={file.type}
