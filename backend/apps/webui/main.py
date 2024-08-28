@@ -312,6 +312,7 @@ async def generate_function_chat_completion(form_data, user):
         "__event_emitter__": __event_emitter__,
         "__event_call__": __event_call__,
         "__task__": __task__,
+        "__files__": files,
         "__user__": {
             "id": user.id,
             "email": user.email,
@@ -319,18 +320,16 @@ async def generate_function_chat_completion(form_data, user):
             "role": user.role,
         },
     }
-    extra_params["__tools__"] = (
-        get_tools(
-            app,
-            tool_ids,
-            user,
-            {
-                **extra_params,
-                "__model__": app.state.MODELS[form_data["model"]],
-                "__messages__": form_data["messages"],
-                "__files__": files,
-            },
-        ),
+    extra_params["__tools__"] = get_tools(
+        app,
+        tool_ids,
+        user,
+        {
+            **extra_params,
+            "__model__": app.state.MODELS[form_data["model"]],
+            "__messages__": form_data["messages"],
+            "__files__": files,
+        },
     )
 
     if model_info:

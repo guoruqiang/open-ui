@@ -4,14 +4,16 @@
 	import {
 		revertSanitizedResponseContent,
 		revertSanitizedCodeResponseContent,
-		unescapeHtml
+		unescapeHtml,
+		copyToClipboard
 	} from '$lib/utils';
 	import { onMount } from 'svelte';
 	import Image from '$lib/components/common/Image.svelte';
-
+	import { toast } from 'svelte-sonner';
+	import { getContext } from 'svelte';
 	import KatexRenderer from './KatexRenderer.svelte';
 	import { WEBUI_BASE_URL } from '$lib/constants';
-
+	const i18n = getContext('i18n');
 	export let id: string;
 	export let tokens: Token[];
 </script>
@@ -41,7 +43,15 @@
 			<svelte:self id={`${id}-em`} tokens={token.tokens} />
 		</em>
 	{:else if token.type === 'codespan'}
-		<code class="codespan">{unescapeHtml(token.text)}</code>
+		<!-- svelte-ignore a11y-click-events-have-key-events -->
+		<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
+		<code
+			class="codespan cursor-pointer"
+			on:click={() => {
+				copyToClipboard(unescapeHtml(token.text));
+				toast.success($i18n.t('Copied to clipboard'));
+			}}>{unescapeHtml(token.text)}</code
+		>
 	{:else if token.type === 'br'}
 		<br />
 	{:else if token.type === 'del'}

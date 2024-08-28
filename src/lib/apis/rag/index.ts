@@ -42,7 +42,13 @@ type YoutubeConfigForm = {
 	translation?: string | null;
 };
 
+type File = {
+	max_size: number;
+	max_count: number;
+}
+
 type RAGConfigForm = {
+	file?: File | null;
 	pdf_extract_images?: boolean;
 	chunk?: ChunkConfigForm;
 	content_extraction?: ContentExtractConfigForm;
@@ -430,7 +436,7 @@ export const resetUploadDir = async (token: string) => {
 	let error = null;
 
 	const res = await fetch(`${RAG_API_BASE_URL}/reset/uploads`, {
-		method: 'GET',
+		method: 'POST',
 		headers: {
 			Accept: 'application/json',
 			authorization: `Bearer ${token}`
@@ -456,7 +462,7 @@ export const resetVectorDB = async (token: string) => {
 	let error = null;
 
 	const res = await fetch(`${RAG_API_BASE_URL}/reset/db`, {
-		method: 'GET',
+		method: 'POST',
 		headers: {
 			Accept: 'application/json',
 			authorization: `Bearer ${token}`
