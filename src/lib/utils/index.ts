@@ -87,7 +87,7 @@ export const sanitizeResponseContent = (content: string) => {
 };
 
 export const processResponseContent = (content: string) => {
-	content = convertLatexToSingleLine(escapeBrackets(content));
+	content = escapeBrackets(content);
 	return content.trim();
 };
 
@@ -96,7 +96,7 @@ export const revertSanitizedResponseContent = (content: string) => {
 };
 
 export const revertSanitizedCodeResponseContent = (content: string) => {
-	return content.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&#39;', "'").replaceAll('\\\\', '\\');
+	return content.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&#39;', "'");
 };
 
 export function unescapeHtml(html: string) {

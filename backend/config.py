@@ -519,6 +519,12 @@ MIDJOURNEY_URL = os.environ.get("MIDJOURNEY_URL", "")
 UPLOAD_DIR = f"{DATA_DIR}/uploads"
 Path(UPLOAD_DIR).mkdir(parents=True, exist_ok=True)
 
+####################################
+# MODEL IMAGES DIR
+####################################
+
+MODEL_IMAGES_DIR = f"{DATA_DIR}/model_images"
+Path(MODEL_IMAGES_DIR).mkdir(parents=True, exist_ok=True)
 
 ####################################
 # Cache DIR
@@ -716,7 +722,7 @@ ENABLE_LOGIN_FORM = PersistentConfig(
 DEFAULT_LOCALE = PersistentConfig(
     "DEFAULT_LOCALE",
     "ui.default_locale",
-    os.environ.get("DEFAULT_LOCALE", ""),
+    os.environ.get("DEFAULT_LOCALE", "zh-CN"),
 )
 
 DEFAULT_MODELS = PersistentConfig(

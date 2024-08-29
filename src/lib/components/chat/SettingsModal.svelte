@@ -15,38 +15,17 @@
 	import Chats from './Settings/Chats.svelte';
 	import User from '../icons/User.svelte';
 	import Personalization from './Settings/Personalization.svelte';
+	import { getBackendConfig } from '$lib/apis';
 
 	const i18n = getContext('i18n');
 
 	export let show = false;
 
 	const saveSettings = async (updated) => {
-		try {
-			const newSettings = { ...$settings, ...updated };
-			console.log(newSettings);
-
-			const res_setting = await updateUserSettings(localStorage.token, { ui: newSettings });
-
-			if (res_setting) {
-				const initialBackgroundImageUrl = newSettings.backgroundImageUrl;
-				await settings.set(newSettings);
-
-				const modelsData = await getModels();
-				await models.set(modelsData);
-
-				if (initialBackgroundImageUrl === 'Random Image') {
-					console.log(res_setting);
-					const backgroundImageUrl = res_setting.ui?.backgroundImageUrl ?? null;
-
-					if (backgroundImageUrl) {
-						newSettings.backgroundImageUrl = backgroundImageUrl;
-						await settings.set(newSettings);
-					}
-				}
-			}
-		} catch (error) {
-			toast.error(`Error: ${error}`);
-		}
+		console.log(updated);
+		await settings.set({ ...$settings, ...updated });
+		await models.set(await getModels());
+		await updateUserSettings(localStorage.token, { ui: $settings });
 	};
 
 	const getModels = async () => {
