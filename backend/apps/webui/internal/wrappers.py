@@ -1,8 +1,9 @@
-from contextvars import ContextVar
-from peewee import *
-from peewee import PostgresqlDatabase, InterfaceError as PeeWeeInterfaceError
-
 import logging
+from contextvars import ContextVar
+
+from peewee import *
+from peewee import InterfaceError as PeeWeeInterfaceError
+from peewee import PostgresqlDatabase
 from playhouse.db_url import connect, parse
 from playhouse.shortcuts import ReconnectMixin
 

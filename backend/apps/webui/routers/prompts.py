@@ -1,15 +1,10 @@
-from fastapi import Depends, FastAPI, HTTPException, status
-from datetime import datetime, timedelta
-from typing import Union, Optional
+from typing import Optional
 
-from fastapi import APIRouter
-from pydantic import BaseModel
-import json
+from fastapi import APIRouter, Depends, HTTPException, status
 
-from apps.webui.models.prompts import Prompts, PromptForm, PromptModel
-
-from utils.utils import get_verified_user, get_admin_user
+from apps.webui.models.prompts import PromptForm, PromptModel, Prompts
 from constants import ERROR_MESSAGES
+from utils.utils import get_admin_user, get_verified_user
 
 router = APIRouter()
 

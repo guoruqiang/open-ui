@@ -1,16 +1,12 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
-import time
 import logging
-from sqlalchemy import String, Column, BigInteger, Text
+import time
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import BigInteger, Column, String, Text
 
 from apps.webui.internal.db import Base, JSONField, get_db
 from apps.webui.models.users import Users
-
-import json
-import copy
-
-
 from env import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
@@ -79,13 +75,10 @@ class ToolValves(BaseModel):
 
 
 class ToolsTable:
-
     def insert_new_tool(
         self, user_id: str, form_data: ToolForm, specs: list[dict]
     ) -> Optional[ToolModel]:
-
         with get_db() as db:
-
             tool = ToolModel(
                 **{
                     **form_data.model_dump(),
@@ -112,7 +105,6 @@ class ToolsTable:
     def get_tool_by_id(self, id: str) -> Optional[ToolModel]:
         try:
             with get_db() as db:
-
                 tool = db.get(Tool, id)
                 return ToolModel.model_validate(tool)
         except Exception:
@@ -125,7 +117,6 @@ class ToolsTable:
     def get_tool_valves_by_id(self, id: str) -> Optional[dict]:
         try:
             with get_db() as db:
-
                 tool = db.get(Tool, id)
                 return tool.valves if tool.valves else {}
         except Exception as e:
@@ -135,7 +126,6 @@ class ToolsTable:
     def update_tool_valves_by_id(self, id: str, valves: dict) -> Optional[ToolValves]:
         try:
             with get_db() as db:
-
                 db.query(Tool).filter_by(id=id).update(
                     {"valves": valves, "updated_at": int(time.time())}
                 )

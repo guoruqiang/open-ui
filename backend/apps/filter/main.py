@@ -11,8 +11,6 @@ from apps.webui.routers.chats import request_share_chat_by_id, request_get_chat_
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from config import (
     AppConfig,
-    WEBUI_URL,
-    WEBUI_NAME,
     ENABLE_MESSAGE_FILTER,
     CHAT_FILTER_WORDS_FILE,
     CHAT_FILTER_WORDS,
@@ -24,7 +22,7 @@ from config import (
     WECHAT_NOTICE_SUFFIX,
     WECHAT_APP_SECRET,
 )
-from config import SRC_LOG_LEVELS, DATA_DIR
+from env import DATA_DIR, SRC_LOG_LEVELS, WEBUI_URL, WEBUI_NAME
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -93,7 +91,7 @@ async def prepare_usage_to_wechatapp():
     return data
 
 
-async def prepare_data_to_wechatapp(share_id, user, type: str):
+async def prepare_data_to_wechatapp(share_id, user, type: str, content: str):
     if type.lower() == "markdown":
         data = {
             "msgtype": "news",
@@ -112,7 +110,11 @@ async def prepare_data_to_wechatapp(share_id, user, type: str):
         data = {
             "msgtype": "text",
             "text": {
-                "content": f"🚨🚨🚨 警告\n\n{user.name}提问敏感消息！\n\n🔗{WEBUI_URL}/s/{share_id}\n\n💢为了API的正常运行，赶紧点开看看吧！"
+                "content": f"🚨🚨🚨 警告"
+                           f"\n\n{user.name}提问敏感消息！"
+                           f"\n\n😅 {content}"
+                           f"\n\n🔗 {WEBUI_URL}/s/{share_id}"
+                           f"\n\n💢 为了API的正常运行，赶紧点开看看吧！"
                            f"\n\n{app.state.config.WECHAT_NOTICE_SUFFIX}"
             }
         }
@@ -326,16 +328,29 @@ async def content_filter_message(payload: dict, content: str, user):
 
             if chat_id and app.state.config.ENABLE_WECHAT_NOTICE:
                 try:
-                    await request_share_chat_by_id(chat_id, user)
-                    share_response = await request_get_chat_by_id(chat_id, user)
-                    try:
-                        share_id = share_response.share_id
-                    except AttributeError:
-                        share_id = None
-                    if share_id:
-                        log.info(f"Share ID: {share_id}")
-                        data = await prepare_data_to_wechatapp(share_id, user,
-                                                               app.state.config.SEND_FILTER_MESSAGE_TYPE)
+                    if chat_id != "local":
+                        await request_share_chat_by_id(chat_id, user)
+                        share_response = await request_get_chat_by_id(chat_id, user)
+                        share_id = getattr(share_response, 'share_id', None)
+
+                        if share_id:
+                            log.info(f"Share ID: {share_id}")
+                            data = await prepare_data_to_wechatapp(
+                                share_id, user, 
+                                app.state.config.SEND_FILTER_MESSAGE_TYPE,content
+                            )
+                            await send_message_to_wechatapp(data)
+                    else:
+                        data = {
+                            "msgtype": "text",
+                            "text": {
+                                "content": f"🚨🚨🚨 警告"
+                                           f"\n\n{user.name}提问敏感消息！"
+                                           f"\n\n😅 {content}"
+                                           f"\n\n💢 为了API的正常运行，赶紧点开看看吧！"
+                                           f"\n\n{app.state.config.WECHAT_NOTICE_SUFFIX}"
+                            }
+                        }
                         await send_message_to_wechatapp(data)
                 except Exception as e:
                     log.error(f"Failed to send message to WeChat app: {e}")

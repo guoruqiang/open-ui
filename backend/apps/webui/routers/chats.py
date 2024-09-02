@@ -1,34 +1,16 @@
-from fastapi import Depends, Request, HTTPException, status
-from datetime import datetime, timedelta
-from typing import Union, Optional
-from utils.utils import get_verified_user, get_admin_user
-from fastapi import APIRouter
-from pydantic import BaseModel
 import json
 import logging
+from typing import Optional
 
-from apps.webui.models.users import Users
-from apps.webui.models.chats import (
-    ChatModel,
-    ChatResponse,
-    ChatTitleForm,
-    ChatForm,
-    ChatTitleIdResponse,
-    Chats,
-)
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from pydantic import BaseModel
 
-
-from apps.webui.models.tags import (
-    TagModel,
-    ChatIdTagModel,
-    ChatIdTagForm,
-    ChatTagsResponse,
-    Tags,
-)
-
+from apps.webui.models.chats import ChatForm, ChatResponse, Chats, ChatTitleIdResponse
+from apps.webui.models.tags import ChatIdTagForm, ChatIdTagModel, TagModel, Tags
+from config import ENABLE_ADMIN_CHAT_ACCESS, ENABLE_ADMIN_EXPORT
 from constants import ERROR_MESSAGES
-
-from config import SRC_LOG_LEVELS, ENABLE_ADMIN_EXPORT, ENABLE_ADMIN_CHAT_ACCESS
+from env import SRC_LOG_LEVELS
+from utils.utils import get_admin_user, get_verified_user
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
@@ -61,7 +43,6 @@ async def get_session_user_chat_list(
 
 @router.delete("/", response_model=bool)
 async def delete_all_user_chats(request: Request, user=Depends(get_verified_user)):
-
     if (
         user.role != "admin"
         and not request.app.state.config.USER_PERMISSIONS["chat"]["deletion"]
@@ -220,7 +201,6 @@ class TagNameForm(BaseModel):
 async def get_user_chat_list_by_tag_name(
     form_data: TagNameForm, user=Depends(get_verified_user)
 ):
-
     chat_ids = [
         chat_id_tag.chat_id
         for chat_id_tag in Tags.get_chat_ids_by_tag_name_and_user_id(
@@ -308,7 +288,6 @@ async def update_chat_by_id(
 
 @router.delete("/{id}", response_model=bool)
 async def delete_chat_by_id(request: Request, id: str, user=Depends(get_verified_user)):
-
     if user.role == "admin":
         result = Chats.delete_chat_by_id(id)
         return result
@@ -332,7 +311,6 @@ async def delete_chat_by_id(request: Request, id: str, user=Depends(get_verified
 async def clone_chat_by_id(id: str, user=Depends(get_verified_user)):
     chat = Chats.get_chat_by_id_and_user_id(id, user.id)
     if chat:
-
         chat_body = json.loads(chat.chat)
         updated_chat = {
             **chat_body,

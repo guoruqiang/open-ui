@@ -1,12 +1,12 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Union, Optional
+import time
+import uuid
+from typing import Optional
 
-from sqlalchemy import Column, String, BigInteger, Text
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import BigInteger, Column, String, Text
 
 from apps.webui.internal.db import Base, get_db
 
-import time
-import uuid
 
 ####################
 # Memory DB Schema
@@ -39,13 +39,11 @@ class MemoryModel(BaseModel):
 
 
 class MemoriesTable:
-
     def insert_new_memory(
         self,
         user_id: str,
         content: str,
     ) -> Optional[MemoryModel]:
-
         with get_db() as db:
             id = str(uuid.uuid4())
 
@@ -73,7 +71,6 @@ class MemoriesTable:
         content: str,
     ) -> Optional[MemoryModel]:
         with get_db() as db:
-
             try:
                 db.query(Memory).filter_by(id=id).update(
                     {"content": content, "updated_at": int(time.time())}
@@ -85,7 +82,6 @@ class MemoriesTable:
 
     def get_memories(self) -> list[MemoryModel]:
         with get_db() as db:
-
             try:
                 memories = db.query(Memory).all()
                 return [MemoryModel.model_validate(memory) for memory in memories]
@@ -94,7 +90,6 @@ class MemoriesTable:
 
     def get_memories_by_user_id(self, user_id: str) -> list[MemoryModel]:
         with get_db() as db:
-
             try:
                 memories = db.query(Memory).filter_by(user_id=user_id).all()
                 return [MemoryModel.model_validate(memory) for memory in memories]
@@ -103,7 +98,6 @@ class MemoriesTable:
 
     def get_memory_by_id(self, id: str) -> Optional[MemoryModel]:
         with get_db() as db:
-
             try:
                 memory = db.get(Memory, id)
                 return MemoryModel.model_validate(memory)
@@ -112,7 +106,6 @@ class MemoriesTable:
 
     def delete_memory_by_id(self, id: str) -> bool:
         with get_db() as db:
-
             try:
                 db.query(Memory).filter_by(id=id).delete()
                 db.commit()
@@ -124,7 +117,6 @@ class MemoriesTable:
 
     def delete_memories_by_user_id(self, user_id: str) -> bool:
         with get_db() as db:
-
             try:
                 db.query(Memory).filter_by(user_id=user_id).delete()
                 db.commit()
@@ -135,7 +127,6 @@ class MemoriesTable:
 
     def delete_memory_by_id_and_user_id(self, id: str, user_id: str) -> bool:
         with get_db() as db:
-
             try:
                 db.query(Memory).filter_by(id=id, user_id=user_id).delete()
                 db.commit()

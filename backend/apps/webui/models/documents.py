@@ -1,14 +1,12 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
-import time
+import json
 import logging
+import time
+from typing import Optional
 
-from sqlalchemy import String, Column, BigInteger, Text
+from pydantic import BaseModel, ConfigDict
+from sqlalchemy import BigInteger, Column, String, Text
 
 from apps.webui.internal.db import Base, get_db
-
-import json
-
 from env import SRC_LOG_LEVELS
 
 log = logging.getLogger(__name__)
@@ -70,12 +68,10 @@ class DocumentForm(DocumentUpdateForm):
 
 
 class DocumentsTable:
-
     def insert_new_doc(
         self, user_id: str, form_data: DocumentForm
     ) -> Optional[DocumentModel]:
         with get_db() as db:
-
             document = DocumentModel(
                 **{
                     **form_data.model_dump(),
@@ -99,7 +95,6 @@ class DocumentsTable:
     def get_doc_by_name(self, name: str) -> Optional[DocumentModel]:
         try:
             with get_db() as db:
-
                 document = db.query(Document).filter_by(name=name).first()
                 return DocumentModel.model_validate(document) if document else None
         except Exception:
@@ -107,7 +102,6 @@ class DocumentsTable:
 
     def get_docs(self) -> list[DocumentModel]:
         with get_db() as db:
-
             return [
                 DocumentModel.model_validate(doc) for doc in db.query(Document).all()
             ]
@@ -117,7 +111,6 @@ class DocumentsTable:
     ) -> Optional[DocumentModel]:
         try:
             with get_db() as db:
-
                 db.query(Document).filter_by(name=name).update(
                     {
                         "title": form_data.title,
@@ -140,7 +133,6 @@ class DocumentsTable:
             doc_content = {**doc_content, **updated}
 
             with get_db() as db:
-
                 db.query(Document).filter_by(name=name).update(
                     {
                         "content": json.dumps(doc_content),
@@ -156,7 +148,6 @@ class DocumentsTable:
     def delete_doc_by_name(self, name: str) -> bool:
         try:
             with get_db() as db:
-
                 db.query(Document).filter_by(name=name).delete()
                 db.commit()
                 return True
