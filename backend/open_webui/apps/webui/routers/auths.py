@@ -3,6 +3,9 @@ import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import Response
+from pydantic import BaseModel
+import aiohttp
+
 from open_webui.apps.webui.models.auths import (
     AddUserForm,
     ApiKey,
@@ -15,7 +18,7 @@ from open_webui.apps.webui.models.auths import (
     UserResponse,
 )
 from open_webui.apps.webui.models.users import Users
-from open_webui.config import WEBUI_AUTH
+from open_webui.config import WEBUI_AUTH, REGISTERED_EMAIL_SUFFIX, TURNSTILE_CHECK, TURNSTILE_SECRET_KEY
 from open_webui.constants import ERROR_MESSAGES, WEBHOOK_MESSAGES
 from open_webui.env import WEBUI_AUTH_TRUSTED_EMAIL_HEADER, WEBUI_AUTH_TRUSTED_NAME_HEADER
 from open_webui.utils.misc import parse_duration, validate_email_format
@@ -27,9 +30,9 @@ from open_webui.utils.utils import (
     get_password_hash,
 )
 from open_webui.utils.webhook import post_webhook
-from pydantic import BaseModel
 
 router = APIRouter()
+
 
 ############################
 # GetSessionUser
@@ -38,7 +41,7 @@ router = APIRouter()
 
 @router.get("/", response_model=UserResponse)
 async def get_session_user(
-    request: Request, response: Response, user=Depends(get_current_user)
+        request: Request, response: Response, user=Depends(get_current_user)
 ):
     token = create_token(
         data={"id": user.id},
@@ -68,7 +71,7 @@ async def get_session_user(
 
 @router.post("/update/profile", response_model=UserResponse)
 async def update_profile(
-    form_data: UpdateProfileForm, session_user=Depends(get_current_user)
+        form_data: UpdateProfileForm, session_user=Depends(get_current_user)
 ):
     if session_user:
         user = Users.update_user_by_id(
@@ -90,7 +93,7 @@ async def update_profile(
 
 @router.post("/update/password", response_model=bool)
 async def update_password(
-    form_data: UpdatePasswordForm, session_user=Depends(get_current_user)
+        form_data: UpdatePasswordForm, session_user=Depends(get_current_user)
 ):
     if WEBUI_AUTH_TRUSTED_EMAIL_HEADER:
         raise HTTPException(400, detail=ERROR_MESSAGES.ACTION_PROHIBITED)
@@ -182,6 +185,32 @@ async def signin(request: Request, response: Response, form_data: SigninForm):
 # SignUp
 ############################
 
+async def validate_token(token, secret):
+    url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        'response': token,
+        'secret': secret
+    }
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(url, json=payload, headers=headers) as response:
+                response.raise_for_status()
+                data = await response.json()
+                error_codes = data.get('error-codes', [])
+                error = error_codes[0] if error_codes else None
+                return {
+                    'success': data.get('success', False),
+                    'error': error
+                }
+            
+    except Exception as e:
+        return {
+            'success': False,
+            'error': f'Unexpected error: {str(e)}'
+        }
+
 
 @router.post("/signup", response_model=SigninResponse)
 async def signup(request: Request, response: Response, form_data: SignupForm):
@@ -194,14 +223,26 @@ async def signup(request: Request, response: Response, form_data: SignupForm):
             status.HTTP_403_FORBIDDEN, detail=ERROR_MESSAGES.ACCESS_PROHIBITED
         )
 
+    if TURNSTILE_CHECK and TURNSTILE_SECRET_KEY:
+        res = await validate_token(form_data.turnstileToken, TURNSTILE_SECRET_KEY)
+        if not res.get("success", False):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail=ERROR_MESSAGES.TURNSTILE_ERROR
+            )
+
     if not validate_email_format(form_data.email.lower()):
         raise HTTPException(
             status.HTTP_400_BAD_REQUEST, detail=ERROR_MESSAGES.INVALID_EMAIL_FORMAT
         )
 
+    if REGISTERED_EMAIL_SUFFIX and not form_data.email.lower().endswith(REGISTERED_EMAIL_SUFFIX):
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, detail=ERROR_MESSAGES.INVALID_CUSTOMER_EMAIL_FORMAT
+        )
+    
     if Users.get_user_by_email(form_data.email.lower()):
         raise HTTPException(400, detail=ERROR_MESSAGES.EMAIL_TAKEN)
-
+    
     try:
         role = (
             "admin"
@@ -358,7 +399,7 @@ class AdminConfig(BaseModel):
 
 @router.post("/admin/config")
 async def update_admin_config(
-    request: Request, form_data: AdminConfig, user=Depends(get_admin_user)
+        request: Request, form_data: AdminConfig, user=Depends(get_admin_user)
 ):
     request.app.state.config.SHOW_ADMIN_DETAILS = form_data.SHOW_ADMIN_DETAILS
     request.app.state.config.ENABLE_SIGNUP = form_data.ENABLE_SIGNUP

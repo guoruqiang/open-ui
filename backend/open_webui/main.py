@@ -28,6 +28,13 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from sqlalchemy import text
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import RedirectResponse, Response, StreamingResponse
+
 from open_webui.apps.audio.main import app as audio_app
 from open_webui.apps.filter.main import app as filter_app
 from open_webui.apps.filter.main import filter_message, app_start
@@ -68,8 +75,8 @@ from open_webui.config import (
     MODEL_FILTER_LIST,
     OAUTH_MERGE_ACCOUNTS_BY_EMAIL,
     OAUTH_PROVIDERS,
+    ENABLE_SEARCH_QUERY,
     SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE,
-    SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD,
     STATIC_DIR,
     TASK_MODEL,
     TASK_MODEL_EXTERNAL,
@@ -78,7 +85,7 @@ from open_webui.config import (
     WEBHOOK_URL,
     WEBUI_AUTH,
     AppConfig,
-    run_migrations, BACKGROUND_RANDOM_IMAGE_URL, MODEL_STATUS, LOBECHAT_URL, MIDJOURNEY_URL,
+    run_migrations, BACKGROUND_RANDOM_IMAGE_URL, MODEL_STATUS, LOBECHAT_URL, MIDJOURNEY_URL,TURNSTILE_CHECK,TURNSTILE_SITE_KEY
 )
 from open_webui.constants import ERROR_MESSAGES, TASKS, WEBHOOK_MESSAGES
 from open_webui.env import (
@@ -117,12 +124,6 @@ from open_webui.utils.utils import (
     get_verified_user,
 )
 from open_webui.utils.webhook import post_webhook
-from pydantic import BaseModel
-from sqlalchemy import text
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import RedirectResponse, Response, StreamingResponse
 
 if SAFE_MODE:
     print("SAFE MODE ENABLED")
@@ -188,9 +189,7 @@ app.state.config.TITLE_GENERATION_PROMPT_TEMPLATE = TITLE_GENERATION_PROMPT_TEMP
 app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE = (
     SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE
 )
-app.state.config.SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD = (
-    SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD
-)
+app.state.config.ENABLE_SEARCH_QUERY = ENABLE_SEARCH_QUERY
 app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE = (
     TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE
 )
@@ -389,8 +388,13 @@ async def chat_completion_tools_handler(
     specs = [tool["spec"] for tool in tools.values()]
     tools_specs = json.dumps(specs)
 
+    if app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE != "":
+        template = app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE
+    else:
+        template = """Available Tools: {{TOOLS}}\nReturn an empty string if no tools match the query. If a function tool matches, construct and return a JSON object in the format {\"name\": \"functionName\", \"parameters\": {\"requiredFunctionParamKey\": \"requiredFunctionParamValue\"}} using the appropriate tool and its parameters. Only return the object and limit the response to the JSON object without additional text."""
+
     tools_function_calling_prompt = tools_function_calling_generation_template(
-        app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE, tools_specs
+        template, tools_specs
     )
     log.info(f"{tools_function_calling_prompt=}")
     payload = get_tools_function_calling_payload(
@@ -1328,8 +1332,8 @@ async def get_task_config(user=Depends(get_verified_user)):
         "TASK_MODEL": app.state.config.TASK_MODEL,
         "TASK_MODEL_EXTERNAL": app.state.config.TASK_MODEL_EXTERNAL,
         "TITLE_GENERATION_PROMPT_TEMPLATE": app.state.config.TITLE_GENERATION_PROMPT_TEMPLATE,
+        "ENABLE_SEARCH_QUERY": app.state.config.ENABLE_SEARCH_QUERY,
         "SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE": app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE,
-        "SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD": app.state.config.SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD,
         "TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE": app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
         "BACKGROUND_RANDOM_IMAGE_URL": app.state.config.BACKGROUND_RANDOM_IMAGE_URL,
     }
@@ -1340,7 +1344,7 @@ class TaskConfigForm(BaseModel):
     TASK_MODEL_EXTERNAL: Optional[str]
     TITLE_GENERATION_PROMPT_TEMPLATE: str
     SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE: str
-    SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD: int
+    ENABLE_SEARCH_QUERY: bool
     TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE: str
     BACKGROUND_RANDOM_IMAGE_URL: str
 
@@ -1355,9 +1359,7 @@ async def update_task_config(form_data: TaskConfigForm, user=Depends(get_admin_u
     app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE = (
         form_data.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE
     )
-    app.state.config.SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD = (
-        form_data.SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD
-    )
+    app.state.config.ENABLE_SEARCH_QUERY = form_data.ENABLE_SEARCH_QUERY
     app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE = (
         form_data.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE
     )
@@ -1372,7 +1374,7 @@ async def update_task_config(form_data: TaskConfigForm, user=Depends(get_admin_u
         "TASK_MODEL_EXTERNAL": app.state.config.TASK_MODEL_EXTERNAL,
         "TITLE_GENERATION_PROMPT_TEMPLATE": app.state.config.TITLE_GENERATION_PROMPT_TEMPLATE,
         "SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE": app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE,
-        "SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD": app.state.config.SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD,
+        "ENABLE_SEARCH_QUERY": app.state.config.ENABLE_SEARCH_QUERY,
         "TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE": app.state.config.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
         "BACKGROUND_RANDOM_IMAGE_URL": app.state.config.BACKGROUND_RANDOM_IMAGE_URL,
     }
@@ -1395,7 +1397,20 @@ async def generate_title(form_data: dict, user=Depends(get_verified_user)):
 
     print(model_id)
 
-    template = app.state.config.TITLE_GENERATION_PROMPT_TEMPLATE
+    if app.state.config.TITLE_GENERATION_PROMPT_TEMPLATE != "":
+        template = app.state.config.TITLE_GENERATION_PROMPT_TEMPLATE
+    else:
+        template = """Create a concise, 3-5 word title with an emoji as a title for the prompt in the given language. Suitable Emojis for the summary can be used to enhance understanding but avoid quotation marks or special formatting. RESPOND ONLY WITH THE TITLE TEXT.
+
+Examples of titles:
+📉 Stock Market Trends
+🍪 Perfect Chocolate Chip Recipe
+Evolution of Music Streaming
+Remote Work Productivity Tips
+Artificial Intelligence in Healthcare
+🎮 Video Game Development Insights
+
+Prompt: {{prompt:middletruncate:8000}}"""
 
     content = title_generation_template(
         template,
@@ -1440,11 +1455,10 @@ async def generate_title(form_data: dict, user=Depends(get_verified_user)):
 @app.post("/api/task/query/completions")
 async def generate_search_query(form_data: dict, user=Depends(get_verified_user)):
     print("generate_search_query")
-
-    if len(form_data["prompt"]) < app.state.config.SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD:
+    if not app.state.config.ENABLE_SEARCH_QUERY:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Skip search query generation for short prompts (< {app.state.config.SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD} characters)",
+            detail=f"Search query generation is disabled",
         )
 
     model_id = form_data["model"]
@@ -1460,11 +1474,24 @@ async def generate_search_query(form_data: dict, user=Depends(get_verified_user)
 
     print(model_id)
 
-    template = app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE
+    if app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE != "":
+        template = app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE
+    else:
+        template = """Given the user's message and interaction history, decide if a web search is necessary. You must be concise and exclusively provide a search query if one is necessary. Refrain from verbose responses or any additional commentary. Prefer suggesting a search if uncertain to provide comprehensive or updated information. If a search isn't needed at all, respond with an empty string. Default to a search query when in doubt. Today's date is {{CURRENT_DATE}}.
+
+User Message:
+{{prompt:end:4000}}
+
+Interaction History:
+{{MESSAGES:END:6}}
+
+Search Query:"""
 
     content = search_query_generation_template(
-        template, form_data["prompt"], {"name": user.name}
+        template, form_data["messages"], {"name": user.name}
     )
+
+    print("content", content)
 
     payload = {
         "model": model_id,
@@ -1967,6 +1994,8 @@ async def get_app_config(request: Request):
         "lobeChat_url": LOBECHAT_URL,
         "midjourney_url": MIDJOURNEY_URL,
         "random_image_url": app.state.config.BACKGROUND_RANDOM_IMAGE_URL,
+        "turnstile_check": TURNSTILE_CHECK,
+	    "turnstile_site_key": TURNSTILE_SITE_KEY,
         "version": VERSION,
         "default_locale": str(DEFAULT_LOCALE),
         "oauth": {

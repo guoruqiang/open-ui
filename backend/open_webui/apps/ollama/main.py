@@ -13,6 +13,9 @@ import requests
 from fastapi import Depends, FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, ConfigDict
+from starlette.background import BackgroundTask
+
 from open_webui.apps.webui.models.models import Models
 from open_webui.config import (
     AIOHTTP_CLIENT_TIMEOUT,
@@ -27,14 +30,14 @@ from open_webui.config import (
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.utils.misc import (
+    calculate_sha256,
+)
+from open_webui.utils.payload import (
     apply_model_params_to_body_ollama,
     apply_model_params_to_body_openai,
     apply_model_system_prompt_to_body,
-    calculate_sha256,
 )
 from open_webui.utils.utils import get_admin_user, get_verified_user
-from pydantic import BaseModel, ConfigDict
-from starlette.background import BackgroundTask
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["OLLAMA"])
@@ -125,8 +128,8 @@ async def fetch_url(url):
 
 
 async def cleanup_response(
-    response: Optional[aiohttp.ClientResponse],
-    session: Optional[aiohttp.ClientSession],
+        response: Optional[aiohttp.ClientResponse],
+        session: Optional[aiohttp.ClientSession],
 ):
     if response:
         response.close()
@@ -135,7 +138,7 @@ async def cleanup_response(
 
 
 async def post_streaming_url(
-    url: str, payload: Union[str, bytes], stream: bool = True, content_type=None
+        url: str, payload: Union[str, bytes], stream: bool = True, content_type=None
 ):
     r = None
     try:
@@ -226,7 +229,7 @@ async def get_all_models():
 @app.get("/api/tags")
 @app.get("/api/tags/{url_idx}")
 async def get_ollama_tags(
-    url_idx: Optional[int] = None, user=Depends(get_verified_user)
+        url_idx: Optional[int] = None, user=Depends(get_verified_user)
 ):
     if url_idx is None:
         models = await get_all_models()
@@ -236,7 +239,7 @@ async def get_ollama_tags(
                 models["models"] = list(
                     filter(
                         lambda model: model["name"]
-                        in app.state.config.MODEL_FILTER_LIST,
+                                      in app.state.config.MODEL_FILTER_LIST,
                         models["models"],
                     )
                 )
@@ -329,7 +332,7 @@ class ModelNameForm(BaseModel):
 @app.post("/api/pull")
 @app.post("/api/pull/{url_idx}")
 async def pull_model(
-    form_data: ModelNameForm, url_idx: int = 0, user=Depends(get_admin_user)
+        form_data: ModelNameForm, url_idx: int = 0, user=Depends(get_admin_user)
 ):
     url = app.state.config.OLLAMA_BASE_URLS[url_idx]
     log.info(f"url: {url}")
@@ -349,9 +352,9 @@ class PushModelForm(BaseModel):
 @app.delete("/api/push")
 @app.delete("/api/push/{url_idx}")
 async def push_model(
-    form_data: PushModelForm,
-    url_idx: Optional[int] = None,
-    user=Depends(get_admin_user),
+        form_data: PushModelForm,
+        url_idx: Optional[int] = None,
+        user=Depends(get_admin_user),
 ):
     if url_idx is None:
         if form_data.name in app.state.MODELS:
@@ -380,7 +383,7 @@ class CreateModelForm(BaseModel):
 @app.post("/api/create")
 @app.post("/api/create/{url_idx}")
 async def create_model(
-    form_data: CreateModelForm, url_idx: int = 0, user=Depends(get_admin_user)
+        form_data: CreateModelForm, url_idx: int = 0, user=Depends(get_admin_user)
 ):
     log.debug(f"form_data: {form_data}")
     url = app.state.config.OLLAMA_BASE_URLS[url_idx]
@@ -399,9 +402,9 @@ class CopyModelForm(BaseModel):
 @app.post("/api/copy")
 @app.post("/api/copy/{url_idx}")
 async def copy_model(
-    form_data: CopyModelForm,
-    url_idx: Optional[int] = None,
-    user=Depends(get_admin_user),
+        form_data: CopyModelForm,
+        url_idx: Optional[int] = None,
+        user=Depends(get_admin_user),
 ):
     if url_idx is None:
         if form_data.source in app.state.MODELS:
@@ -447,9 +450,9 @@ async def copy_model(
 @app.delete("/api/delete")
 @app.delete("/api/delete/{url_idx}")
 async def delete_model(
-    form_data: ModelNameForm,
-    url_idx: Optional[int] = None,
-    user=Depends(get_admin_user),
+        form_data: ModelNameForm,
+        url_idx: Optional[int] = None,
+        user=Depends(get_admin_user),
 ):
     if url_idx is None:
         if form_data.name in app.state.MODELS:
@@ -538,12 +541,14 @@ class GenerateEmbeddingsForm(BaseModel):
     keep_alive: Optional[Union[int, str]] = None
 
 
+@app.post("/api/embed")
+@app.post("/api/embed/{url_idx}")
 @app.post("/api/embeddings")
 @app.post("/api/embeddings/{url_idx}")
 async def generate_embeddings(
-    form_data: GenerateEmbeddingsForm,
-    url_idx: Optional[int] = None,
-    user=Depends(get_verified_user),
+        form_data: GenerateEmbeddingsForm,
+        url_idx: Optional[int] = None,
+        user=Depends(get_verified_user),
 ):
     if url_idx is None:
         model = form_data.model
@@ -564,7 +569,7 @@ async def generate_embeddings(
 
     r = requests.request(
         method="POST",
-        url=f"{url}/api/embeddings",
+        url=f"{url}/api/embed",
         headers={"Content-Type": "application/json"},
         data=form_data.model_dump_json(exclude_none=True).encode(),
     )
@@ -590,8 +595,8 @@ async def generate_embeddings(
 
 
 def generate_ollama_embeddings(
-    form_data: GenerateEmbeddingsForm,
-    url_idx: Optional[int] = None,
+        form_data: GenerateEmbeddingsForm,
+        url_idx: Optional[int] = None,
 ):
     log.info(f"generate_ollama_embeddings {form_data}")
 
@@ -660,9 +665,9 @@ class GenerateCompletionForm(BaseModel):
 @app.post("/api/generate")
 @app.post("/api/generate/{url_idx}")
 async def generate_completion(
-    form_data: GenerateCompletionForm,
-    url_idx: Optional[int] = None,
-    user=Depends(get_verified_user),
+        form_data: GenerateCompletionForm,
+        url_idx: Optional[int] = None,
+        user=Depends(get_verified_user),
 ):
     if url_idx is None:
         model = form_data.model
@@ -717,9 +722,9 @@ def get_ollama_url(url_idx: Optional[int], model: str):
 @app.post("/api/chat")
 @app.post("/api/chat/{url_idx}")
 async def generate_chat_completion(
-    form_data: GenerateChatCompletionForm,
-    url_idx: Optional[int] = None,
-    user=Depends(get_verified_user),
+        form_data: GenerateChatCompletionForm,
+        url_idx: Optional[int] = None,
+        user=Depends(get_verified_user),
 ):
     payload = {**form_data.model_dump(exclude_none=True)}
     log.debug(f"{payload = }")
@@ -787,9 +792,9 @@ class OpenAIChatCompletionForm(BaseModel):
 @app.post("/v1/chat/completions")
 @app.post("/v1/chat/completions/{url_idx}")
 async def generate_openai_chat_completion(
-    form_data: dict,
-    url_idx: Optional[int] = None,
-    user=Depends(get_verified_user),
+        form_data: dict,
+        url_idx: Optional[int] = None,
+        user=Depends(get_verified_user),
 ):
     completion_form = OpenAIChatCompletionForm(**form_data)
     payload = {**completion_form.model_dump(exclude_none=True, exclude=["metadata"])}
@@ -833,8 +838,8 @@ async def generate_openai_chat_completion(
 @app.get("/v1/models")
 @app.get("/v1/models/{url_idx}")
 async def get_openai_models(
-    url_idx: Optional[int] = None,
-    user=Depends(get_verified_user),
+        url_idx: Optional[int] = None,
+        user=Depends(get_verified_user),
 ):
     if url_idx is None:
         models = await get_all_models()
@@ -844,7 +849,7 @@ async def get_openai_models(
                 models["models"] = list(
                     filter(
                         lambda model: model["name"]
-                        in app.state.config.MODEL_FILTER_LIST,
+                                      in app.state.config.MODEL_FILTER_LIST,
                         models["models"],
                     )
                 )
@@ -925,7 +930,7 @@ def parse_huggingface_url(hf_url):
 
 
 async def download_file_stream(
-    ollama_url, file_url, file_path, file_name, chunk_size=1024 * 1024
+        ollama_url, file_url, file_path, file_name, chunk_size=1024 * 1024
 ):
     done = False
 
@@ -977,9 +982,9 @@ async def download_file_stream(
 @app.post("/models/download")
 @app.post("/models/download/{url_idx}")
 async def download_model(
-    form_data: UrlForm,
-    url_idx: Optional[int] = None,
-    user=Depends(get_admin_user),
+        form_data: UrlForm,
+        url_idx: Optional[int] = None,
+        user=Depends(get_admin_user),
 ):
     allowed_hosts = ["https://huggingface.co/", "https://github.com/"]
 
@@ -1008,9 +1013,9 @@ async def download_model(
 @app.post("/models/upload")
 @app.post("/models/upload/{url_idx}")
 def upload_model(
-    file: UploadFile = File(...),
-    url_idx: Optional[int] = None,
-    user=Depends(get_admin_user),
+        file: UploadFile = File(...),
+        url_idx: Optional[int] = None,
+        user=Depends(get_admin_user),
 ):
     if url_idx is None:
         url_idx = 0

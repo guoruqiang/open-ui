@@ -10,6 +10,9 @@ from urllib.parse import urlparse
 import chromadb
 import yaml
 from chromadb import Settings
+from pydantic import BaseModel
+from sqlalchemy import JSON, Column, DateTime, Integer, func
+
 from open_webui.apps.webui.internal.db import Base, get_db
 from open_webui.env import (
     OPEN_WEBUI_DIR,
@@ -17,12 +20,8 @@ from open_webui.env import (
     ENV,
     FRONTEND_BUILD_DIR,
     WEBUI_AUTH,
-    WEBUI_FAVICON_URL,
-    WEBUI_NAME,
     log,
 )
-from pydantic import BaseModel
-from sqlalchemy import JSON, Column, DateTime, Integer, func
 
 
 class EndpointFilter(logging.Filter):
@@ -32,6 +31,7 @@ class EndpointFilter(logging.Filter):
 
 # Filter out /endpoint
 logging.getLogger("uvicorn.access").addFilter(EndpointFilter())
+
 
 ####################################
 # Config helpers
@@ -401,9 +401,9 @@ def load_oauth_providers():
         }
 
     if (
-        MICROSOFT_CLIENT_ID.value
-        and MICROSOFT_CLIENT_SECRET.value
-        and MICROSOFT_CLIENT_TENANT_ID.value
+            MICROSOFT_CLIENT_ID.value
+            and MICROSOFT_CLIENT_SECRET.value
+            and MICROSOFT_CLIENT_TENANT_ID.value
     ):
         OAUTH_PROVIDERS["microsoft"] = {
             "client_id": MICROSOFT_CLIENT_ID.value,
@@ -414,9 +414,9 @@ def load_oauth_providers():
         }
 
     if (
-        OAUTH_CLIENT_ID.value
-        and OAUTH_CLIENT_SECRET.value
-        and OPENID_PROVIDER_URL.value
+            OAUTH_CLIENT_ID.value
+            and OAUTH_CLIENT_SECRET.value
+            and OPENID_PROVIDER_URL.value
     ):
         OAUTH_PROVIDERS["oidc"] = {
             "client_id": OAUTH_CLIENT_ID.value,
@@ -456,7 +456,6 @@ if frontend_splash.exists():
 else:
     logging.warning(f"Frontend splash not found at {frontend_splash}")
 
-
 ####################################
 # CUSTOM_NAME
 ####################################
@@ -481,23 +480,23 @@ CUSTOM_NAME = os.environ.get("CUSTOM_NAME", "")
 #                         r.raw.decode_content = True
 #                         shutil.copyfileobj(r.raw, f)
 
-    #         if "splash" in data:
-    #             url = (
-    #                 f"https://api.openwebui.com{data['splash']}"
-    #                 if data["splash"][0] == "/"
-    #                 else data["splash"]
-    #             )
+#         if "splash" in data:
+#             url = (
+#                 f"https://api.openwebui.com{data['splash']}"
+#                 if data["splash"][0] == "/"
+#                 else data["splash"]
+#             )
 
-    #             r = requests.get(url, stream=True)
-    #             if r.status_code == 200:
-    #                 with open(f"{STATIC_DIR}/splash.png", "wb") as f:
-    #                     r.raw.decode_content = True
-    #                     shutil.copyfileobj(r.raw, f)
+#             r = requests.get(url, stream=True)
+#             if r.status_code == 200:
+#                 with open(f"{STATIC_DIR}/splash.png", "wb") as f:
+#                     r.raw.decode_content = True
+#                     shutil.copyfileobj(r.raw, f)
 
-    #         WEBUI_NAME = data["name"]
-    # except Exception as e:
-    #     log.exception(e)
-    #     pass
+#         WEBUI_NAME = data["name"]
+# except Exception as e:
+#     log.exception(e)
+#     pass
 
 MODEL_STATUS = os.environ.get("MODEL_STATUS", "")
 
@@ -540,7 +539,6 @@ Path(BACKGROUND_IMAGES_DIR).mkdir(parents=True, exist_ok=True)
 CACHE_DIR = f"{DATA_DIR}/cache"
 Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
 
-
 ####################################
 # Docs DIR
 ####################################
@@ -548,14 +546,12 @@ Path(CACHE_DIR).mkdir(parents=True, exist_ok=True)
 DOCS_DIR = os.getenv("DOCS_DIR", f"{DATA_DIR}/docs")
 Path(DOCS_DIR).mkdir(parents=True, exist_ok=True)
 
-
 ####################################
 # Tools DIR
 ####################################
 
 TOOLS_DIR = os.getenv("TOOLS_DIR", f"{DATA_DIR}/tools")
 Path(TOOLS_DIR).mkdir(parents=True, exist_ok=True)
-
 
 ####################################
 # Functions DIR
@@ -624,7 +620,6 @@ else:
     except Exception:
         AIOHTTP_CLIENT_TIMEOUT = 300
 
-
 K8S_FLAG = os.environ.get("K8S_FLAG", "")
 USE_OLLAMA_DOCKER = os.environ.get("USE_OLLAMA_DOCKER", "false")
 
@@ -646,7 +641,6 @@ if ENV == "prod":
     elif K8S_FLAG:
         OLLAMA_BASE_URL = "http://ollama-service.open-webui.svc.cluster.local:11434"
 
-
 OLLAMA_BASE_URLS = os.environ.get("OLLAMA_BASE_URLS", "")
 OLLAMA_BASE_URLS = OLLAMA_BASE_URLS if OLLAMA_BASE_URLS != "" else OLLAMA_BASE_URL
 
@@ -666,10 +660,8 @@ ENABLE_OPENAI_API = PersistentConfig(
     os.environ.get("ENABLE_OPENAI_API", "True").lower() == "true",
 )
 
-
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 OPENAI_API_BASE_URL = os.environ.get("OPENAI_API_BASE_URL", "")
-
 
 if OPENAI_API_BASE_URL == "":
     OPENAI_API_BASE_URL = "https://api.openai.com/v1"
@@ -777,15 +769,15 @@ DEFAULT_USER_ROLE = PersistentConfig(
 )
 
 USER_PERMISSIONS_CHAT_DELETION = (
-    os.environ.get("USER_PERMISSIONS_CHAT_DELETION", "True").lower() == "true"
+        os.environ.get("USER_PERMISSIONS_CHAT_DELETION", "True").lower() == "true"
 )
 
 USER_PERMISSIONS_CHAT_EDITING = (
-    os.environ.get("USER_PERMISSIONS_CHAT_EDITING", "True").lower() == "true"
+        os.environ.get("USER_PERMISSIONS_CHAT_EDITING", "True").lower() == "true"
 )
 
 USER_PERMISSIONS_CHAT_TEMPORARY = (
-    os.environ.get("USER_PERMISSIONS_CHAT_TEMPORARY", "True").lower() == "true"
+        os.environ.get("USER_PERMISSIONS_CHAT_TEMPORARY", "True").lower() == "true"
 )
 
 USER_PERMISSIONS = PersistentConfig(
@@ -819,7 +811,7 @@ WEBHOOK_URL = PersistentConfig(
 ENABLE_ADMIN_EXPORT = os.environ.get("ENABLE_ADMIN_EXPORT", "True").lower() == "true"
 
 ENABLE_ADMIN_CHAT_ACCESS = (
-    os.environ.get("ENABLE_ADMIN_CHAT_ACCESS", "True").lower() == "true"
+        os.environ.get("ENABLE_ADMIN_CHAT_ACCESS", "True").lower() == "true"
 )
 
 ENABLE_COMMUNITY_SHARING = PersistentConfig(
@@ -888,7 +880,6 @@ except Exception as e:
 
 WEBUI_BANNERS = PersistentConfig("WEBUI_BANNERS", "ui.banners", banners)
 
-
 SHOW_ADMIN_DETAILS = PersistentConfig(
     "SHOW_ADMIN_DETAILS",
     "auth.admin.show",
@@ -900,7 +891,6 @@ ADMIN_EMAIL = PersistentConfig(
     "auth.admin.email",
     os.environ.get("ADMIN_EMAIL", None),
 )
-
 
 ####################################
 # TASKS
@@ -922,44 +912,19 @@ TASK_MODEL_EXTERNAL = PersistentConfig(
 TITLE_GENERATION_PROMPT_TEMPLATE = PersistentConfig(
     "TITLE_GENERATION_PROMPT_TEMPLATE",
     "task.title.prompt_template",
-    os.environ.get(
-        "TITLE_GENERATION_PROMPT_TEMPLATE",
-        """Create a concise, 3-5 word title with an emoji as a title for the prompt in the given language. Suitable Emojis for the summary can be used to enhance understanding but avoid quotation marks or special formatting. RESPOND ONLY WITH THE TITLE TEXT.
-
-Examples of titles:
-📉 Stock Market Trends
-🍪 Perfect Chocolate Chip Recipe
-Evolution of Music Streaming
-Remote Work Productivity Tips
-Artificial Intelligence in Healthcare
-🎮 Video Game Development Insights
-
-Prompt: {{prompt:middletruncate:8000}}""",
-    ),
+    os.environ.get("TITLE_GENERATION_PROMPT_TEMPLATE", ""),
 )
 
+ENABLE_SEARCH_QUERY = PersistentConfig(
+    "ENABLE_SEARCH_QUERY",
+    "task.search.enable",
+    os.environ.get("ENABLE_SEARCH_QUERY", "True").lower() == "true",
+)
 
 SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE = PersistentConfig(
     "SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE",
     "task.search.prompt_template",
-    os.environ.get(
-        "SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE",
-        """You are tasked with generating web search queries. Give me an appropriate query to answer my question for google search. Answer with only the query. Today is {{CURRENT_DATE}}.
-        
-Question:
-{{prompt:end:4000}}""",
-    ),
-)
-
-SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD = PersistentConfig(
-    "SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD",
-    "task.search.prompt_length_threshold",
-    int(
-        os.environ.get(
-            "SEARCH_QUERY_PROMPT_LENGTH_THRESHOLD",
-            100,
-        )
-    ),
+    os.environ.get("SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE", ""),
 )
 
 BACKGROUND_RANDOM_IMAGE_URL = PersistentConfig(
@@ -971,12 +936,8 @@ BACKGROUND_RANDOM_IMAGE_URL = PersistentConfig(
 TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE = PersistentConfig(
     "TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE",
     "task.tools.prompt_template",
-    os.environ.get(
-        "TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE",
-        """Available Tools: {{TOOLS}}\nReturn an empty string if no tools match the query. If a function tool matches, construct and return a JSON object in the format {\"name\": \"functionName\", \"parameters\": {\"requiredFunctionParamKey\": \"requiredFunctionParamValue\"}} using the appropriate tool and its parameters. Only return the object and limit the response to the JSON object without additional text.""",
-    ),
+    os.environ.get("TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE", ""),
 )
-
 
 ####################################
 # RAG document content extraction
@@ -1081,11 +1042,11 @@ RAG_EMBEDDING_MODEL = PersistentConfig(
 log.info(f"Embedding model set: {RAG_EMBEDDING_MODEL.value}")
 
 RAG_EMBEDDING_MODEL_AUTO_UPDATE = (
-    os.environ.get("RAG_EMBEDDING_MODEL_AUTO_UPDATE", "").lower() == "true"
+        os.environ.get("RAG_EMBEDDING_MODEL_AUTO_UPDATE", "").lower() == "true"
 )
 
 RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE = (
-    os.environ.get("RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE", "").lower() == "true"
+        os.environ.get("RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE", "").lower() == "true"
 )
 
 RAG_EMBEDDING_OPENAI_BATCH_SIZE = PersistentConfig(
@@ -1107,13 +1068,12 @@ SILICONFLOW_API_BASE_URL = os.environ.get("SILICONFLOW_API_BASE_URL", "https://a
 SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY", "")
 
 RAG_RERANKING_MODEL_AUTO_UPDATE = (
-    os.environ.get("RAG_RERANKING_MODEL_AUTO_UPDATE", "").lower() == "true"
+        os.environ.get("RAG_RERANKING_MODEL_AUTO_UPDATE", "").lower() == "true"
 )
 
 RAG_RERANKING_MODEL_TRUST_REMOTE_CODE = (
-    os.environ.get("RAG_RERANKING_MODEL_TRUST_REMOTE_CODE", "").lower() == "true"
+        os.environ.get("RAG_RERANKING_MODEL_TRUST_REMOTE_CODE", "").lower() == "true"
 )
-
 
 if CHROMA_HTTP_HOST != "":
     CHROMA_CLIENT = chromadb.HttpClient(
@@ -1132,7 +1092,6 @@ else:
         tenant=CHROMA_TENANT,
         database=CHROMA_DATABASE,
     )
-
 
 # device type embedding models - "cpu" (default), "cuda" (nvidia gpu required) or "mps" (apple silicon) - choosing this right can lead to better performance
 USE_CUDA = os.environ.get("USE_CUDA_DOCKER", "false")
@@ -1183,7 +1142,7 @@ RAG_OPENAI_API_KEY = PersistentConfig(
 )
 
 ENABLE_RAG_LOCAL_WEB_FETCH = (
-    os.getenv("ENABLE_RAG_LOCAL_WEB_FETCH", "False").lower() == "true"
+        os.getenv("ENABLE_RAG_LOCAL_WEB_FETCH", "False").lower() == "true"
 )
 
 YOUTUBE_LOADER_LANGUAGE = PersistentConfig(
@@ -1191,7 +1150,6 @@ YOUTUBE_LOADER_LANGUAGE = PersistentConfig(
     "rag.youtube_loader_language",
     os.getenv("YOUTUBE_LOADER_LANGUAGE", "en").split(","),
 )
-
 
 ENABLE_RAG_WEB_SEARCH = PersistentConfig(
     "ENABLE_RAG_WEB_SEARCH",
@@ -1295,7 +1253,6 @@ RAG_WEB_SEARCH_CONCURRENT_REQUESTS = PersistentConfig(
     int(os.getenv("RAG_WEB_SEARCH_CONCURRENT_REQUESTS", "10")),
 )
 
-
 ####################################
 # Transcribe
 ####################################
@@ -1303,9 +1260,8 @@ RAG_WEB_SEARCH_CONCURRENT_REQUESTS = PersistentConfig(
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
 WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", f"{CACHE_DIR}/whisper/models")
 WHISPER_MODEL_AUTO_UPDATE = (
-    os.environ.get("WHISPER_MODEL_AUTO_UPDATE", "").lower() == "true"
+        os.environ.get("WHISPER_MODEL_AUTO_UPDATE", "").lower() == "true"
 )
-
 
 ####################################
 # Images
@@ -1537,7 +1493,6 @@ AUDIO_TTS_ENGINE = PersistentConfig(
     os.getenv("AUDIO_TTS_ENGINE", ""),
 )
 
-
 AUDIO_TTS_MODEL = PersistentConfig(
     "AUDIO_TTS_MODEL",
     "audio.tts.model",
@@ -1596,7 +1551,6 @@ ENABLE_WECHAT_NOTICE = PersistentConfig(
     os.environ.get("ENABLE_WECHAT_NOTICE", "").lower() == "true",
 )
 
-
 ####################################
 # WECHATAPP NOTICE
 ####################################
@@ -1624,3 +1578,16 @@ SEND_FILTER_MESSAGE_TYPE = PersistentConfig(
     "wechatapp.send_filter_message_type",
     os.getenv("SEND_FILTER_MESSAGE_TYPE", "Markdown"),
 )
+
+
+####################################
+# REGISTERED_EMAIL
+####################################
+
+REGISTERED_EMAIL_SUFFIX = os.environ.get("REGISTERED_EMAIL_SUFFIX", "").lower()
+
+TURNSTILE_CHECK = os.environ.get("TURNSTILE_CHECK", "false").lower() == "true"
+
+TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
+
+TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")

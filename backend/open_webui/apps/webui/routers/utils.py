@@ -5,19 +5,20 @@ import black
 import markdown
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fpdf import FPDF
+from pydantic import BaseModel
+from starlette.responses import FileResponse
+
 from open_webui.config import DATA_DIR, ENABLE_ADMIN_EXPORT
 from open_webui.constants import ERROR_MESSAGES
 from open_webui.utils.misc import get_gravatar_url
 from open_webui.utils.utils import get_admin_user
-from pydantic import BaseModel
-from starlette.responses import FileResponse
 
 router = APIRouter()
 
 
 @router.get("/gravatar")
 async def get_gravatar(
-    email: str,
+        email: str,
 ):
     return get_gravatar_url(email)
 
@@ -43,7 +44,7 @@ class MarkdownForm(BaseModel):
 
 @router.post("/markdown")
 async def get_html_from_markdown(
-    form_data: MarkdownForm,
+        form_data: MarkdownForm,
 ):
     return {"html": markdown.markdown(form_data.md)}
 
@@ -55,15 +56,12 @@ class ChatForm(BaseModel):
 
 @router.post("/pdf")
 async def download_chat_as_pdf(
-    form_data: ChatForm,
+        form_data: ChatForm,
 ):
+    global FONTS_DIR
+
     pdf = FPDF()
     pdf.add_page()
-
-    # When running in docker, workdir is /app/backend, so fonts is in /app/backend/static/fonts
-    FONTS_DIR = Path("./static/fonts")
-
-    # Non Docker Installation
 
     # When running using `pip install` the static directory is in the site packages.
     if not FONTS_DIR.exists():
@@ -87,7 +85,7 @@ async def download_chat_as_pdf(
 
     # Adjust the effective page width for multi_cell
     effective_page_width = (
-        pdf.w - 2 * pdf.l_margin - 10
+            pdf.w - 2 * pdf.l_margin - 10
     )  # Subtracted an additional 10 for extra padding
 
     # Add chat messages

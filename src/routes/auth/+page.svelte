@@ -9,6 +9,7 @@
 	import { generateInitialsImage, canvasPixelTest } from '$lib/utils';
 	import { page } from '$app/stores';
 	import { getBackendConfig } from '$lib/apis';
+	import { Turnstile } from 'svelte-turnstile';
 
 	const i18n = getContext('i18n');
 
@@ -18,6 +19,8 @@
 	let name = '';
 	let email = '';
 	let password = '';
+	let turnstileToken = '';
+	let turnstileVerify = false;
 
 	const setSessionUser = async (sessionUser) => {
 		if (sessionUser) {
@@ -44,12 +47,19 @@
 	};
 
 	const signUpHandler = async () => {
-		const sessionUser = await userSignUp(name, email, password, generateInitialsImage(name)).catch(
-			(error) => {
-				toast.error(error);
-				return null;
-			}
-		);
+		if ($config?.turnstile_check && !turnstileVerify) {
+			toast.error('Please complete the CAPTCHA verification to proceed!');
+		}
+		const sessionUser = await userSignUp(
+			name,
+			email,
+			password,
+			generateInitialsImage(name),
+			turnstileToken
+		).catch((error) => {
+			toast.error(error);
+			return null;
+		});
 
 		await setSessionUser(sessionUser);
 	};
@@ -205,7 +215,7 @@
 									/>
 								</div>
 
-								<div>
+								<div class="{$config?.turnstile_check && mode !== 'signin' ? 'mb-8' : ''}">
 									<div class=" text-sm font-medium text-left mb-1">{$i18n.t('Password')}</div>
 
 									<input
@@ -217,6 +227,22 @@
 										required
 									/>
 								</div>
+
+								{#if $config?.turnstile_check && mode !== 'signin'}
+									<Turnstile
+										siteKey={$config?.turnstile_site_key}
+										size=flexible
+										theme=light
+										on:callback={(event) => {
+											turnstileToken = event.detail.token;
+											turnstileVerify = true;
+										}}
+										on:unsupported={() =>
+											toast.error(
+												'This browser does not support the required features for verification.'
+											)}
+									/>
+								{/if}
 							</div>
 						{/if}
 

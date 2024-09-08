@@ -70,6 +70,10 @@ def load_toolkit_module_by_id(toolkit_id, content=None):
 
         content = replace_imports(content)
         Tools.update_tool_by_id(toolkit_id, {"content": content})
+    else:
+        frontmatter = extract_frontmatter(content)
+        # Install required packages found within the frontmatter
+        install_frontmatter_requirements(frontmatter.get("requirements", ""))
 
     module_name = f"tool_{toolkit_id}"
     module = types.ModuleType(module_name)
@@ -78,16 +82,9 @@ def load_toolkit_module_by_id(toolkit_id, content=None):
     try:
         # Executing the modified content in the created module's namespace
         exec(content, module.__dict__)
-
-        # Extract frontmatter, assuming content can be treated directly as a string
-        frontmatter = extract_frontmatter(
-            content
-        )  # Ensure this method is adaptable to handle content strings
-
-        # Install required packages found within the frontmatter
-        install_frontmatter_requirements(frontmatter.get("requirements", ""))
-
+        frontmatter = extract_frontmatter(content)
         print(f"Loaded module: {module.__name__}")
+
         # Create and return the object if the class 'Tools' is found in the module
         if hasattr(module, "Tools"):
             return module.Tools(), frontmatter
@@ -108,6 +105,9 @@ def load_function_module_by_id(function_id, content=None):
 
         content = replace_imports(content)
         Functions.update_function_by_id(function_id, {"content": content})
+    else:
+        frontmatter = extract_frontmatter(content)
+        install_frontmatter_requirements(frontmatter.get("requirements", ""))
 
     module_name = f"function_{function_id}"
     module = types.ModuleType(module_name)
@@ -116,15 +116,7 @@ def load_function_module_by_id(function_id, content=None):
     try:
         # Execute the modified content in the created module's namespace
         exec(content, module.__dict__)
-
-        # Extract the frontmatter from the content, simulate file-like behaviour
-        frontmatter = extract_frontmatter(
-            content
-        )  # This function needs to handle string inputs
-
-        # Install necessary requirements specified in frontmatter
-        install_frontmatter_requirements(frontmatter.get("requirements", ""))
-
+        frontmatter = extract_frontmatter(content)
         print(f"Loaded module: {module.__name__}")
 
         # Create appropriate object based on available class type in the module

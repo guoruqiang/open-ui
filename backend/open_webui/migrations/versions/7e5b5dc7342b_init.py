@@ -8,10 +8,11 @@ Create Date: 2024-06-24 13:15:33.808998
 
 from typing import Sequence, Union
 
-import apps.webui.internal.db
 import sqlalchemy as sa
 from alembic import op
-from migrations.util import get_existing_tables
+
+from open_webui.apps.webui.internal.db import JSONField
+from open_webui.migrations.util import get_existing_tables
 
 # revision identifiers, used by Alembic.
 revision: str = "7e5b5dc7342b"
@@ -80,9 +81,7 @@ def upgrade() -> None:
             sa.Column("id", sa.String(), nullable=False),
             sa.Column("user_id", sa.String(), nullable=True),
             sa.Column("filename", sa.Text(), nullable=True),
-            sa.Column(
-                "meta", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
+            sa.Column("meta", JSONField(), nullable=True),
             sa.Column("created_at", sa.BigInteger(), nullable=True),
             sa.PrimaryKeyConstraint("id"),
         )
@@ -95,12 +94,8 @@ def upgrade() -> None:
             sa.Column("name", sa.Text(), nullable=True),
             sa.Column("type", sa.Text(), nullable=True),
             sa.Column("content", sa.Text(), nullable=True),
-            sa.Column(
-                "meta", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
-            sa.Column(
-                "valves", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
+            sa.Column("meta", JSONField(), nullable=True),
+            sa.Column("valves", JSONField(), nullable=True),
             sa.Column("is_active", sa.Boolean(), nullable=True),
             sa.Column("is_global", sa.Boolean(), nullable=True),
             sa.Column("updated_at", sa.BigInteger(), nullable=True),
@@ -126,12 +121,8 @@ def upgrade() -> None:
             sa.Column("user_id", sa.Text(), nullable=True),
             sa.Column("base_model_id", sa.Text(), nullable=True),
             sa.Column("name", sa.Text(), nullable=True),
-            sa.Column(
-                "params", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
-            sa.Column(
-                "meta", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
+            sa.Column("params", JSONField(), nullable=True),
+            sa.Column("meta", JSONField(), nullable=True),
             sa.Column("updated_at", sa.BigInteger(), nullable=True),
             sa.Column("created_at", sa.BigInteger(), nullable=True),
             sa.PrimaryKeyConstraint("id"),
@@ -165,15 +156,9 @@ def upgrade() -> None:
             sa.Column("user_id", sa.String(), nullable=True),
             sa.Column("name", sa.Text(), nullable=True),
             sa.Column("content", sa.Text(), nullable=True),
-            sa.Column(
-                "specs", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
-            sa.Column(
-                "meta", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
-            sa.Column(
-                "valves", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
+            sa.Column("specs", JSONField(), nullable=True),
+            sa.Column("meta", JSONField(), nullable=True),
+            sa.Column("valves", JSONField(), nullable=True),
             sa.Column("updated_at", sa.BigInteger(), nullable=True),
             sa.Column("created_at", sa.BigInteger(), nullable=True),
             sa.PrimaryKeyConstraint("id"),
@@ -191,12 +176,8 @@ def upgrade() -> None:
             sa.Column("updated_at", sa.BigInteger(), nullable=True),
             sa.Column("created_at", sa.BigInteger(), nullable=True),
             sa.Column("api_key", sa.String(), nullable=True),
-            sa.Column(
-                "settings", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
-            sa.Column(
-                "info", open_webui.apps.webui.internal.db.JSONField(), nullable=True
-            ),
+            sa.Column("settings", JSONField(), nullable=True),
+            sa.Column("info", JSONField(), nullable=True),
             sa.Column("oauth_sub", sa.Text(), nullable=True),
             sa.PrimaryKeyConstraint("id"),
             sa.UniqueConstraint("api_key"),

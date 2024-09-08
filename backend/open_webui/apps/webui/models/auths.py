@@ -2,15 +2,17 @@ import logging
 import uuid
 from typing import Optional
 
+from pydantic import BaseModel
+from sqlalchemy import Boolean, Column, String, Text
+
 from open_webui.apps.webui.internal.db import Base, get_db
 from open_webui.apps.webui.models.users import UserModel, Users
 from open_webui.env import SRC_LOG_LEVELS
 from open_webui.utils.utils import verify_password
-from pydantic import BaseModel
-from sqlalchemy import Boolean, Column, String, Text
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
+
 
 ####################
 # DB MODEL
@@ -83,21 +85,29 @@ class SignupForm(BaseModel):
     email: str
     password: str
     profile_image_url: Optional[str] = "/user.png"
+    turnstileToken: str
 
 
-class AddUserForm(SignupForm):
+class UserForm(BaseModel):
+    name: str
+    email: str
+    password: str
+    profile_image_url: Optional[str] = "/user.png"
+
+
+class AddUserForm(UserForm):
     role: Optional[str] = "pending"
 
 
 class AuthsTable:
     def insert_new_auth(
-        self,
-        email: str,
-        password: str,
-        name: str,
-        profile_image_url: str = "/user.png",
-        role: str = "pending",
-        oauth_sub: Optional[str] = None,
+            self,
+            email: str,
+            password: str,
+            name: str,
+            profile_image_url: str = "/user.png",
+            role: str = "pending",
+            oauth_sub: Optional[str] = None,
     ) -> Optional[UserModel]:
         with get_db() as db:
             log.info("insert_new_auth")
