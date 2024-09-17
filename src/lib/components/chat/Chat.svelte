@@ -536,12 +536,7 @@
 					`Oops! There was an error in the previous response. Please try again or contact admin.`
 				)
 			);
-		} else if (
-			files.length > 0 &&
-			files.filter(
-				(file) => file.status !== 'processed'
-			).length > 0
-		) {
+		} else if (files.length > 0 && files.filter((file) => file.status !== 'processed').length > 0) {
 			// Upload not done
 			toast.error(
 				$i18n.t(
@@ -568,6 +563,7 @@
 			}
 
 			const _files = JSON.parse(JSON.stringify(files));
+
 			chatFiles.push(
 				..._files.filter(
 					(item) =>
@@ -575,11 +571,16 @@
 						(!item.base64 || item.type !== 'file')
 				)
 			);
-			chatFiles = chatFiles.filter(
-				// Remove duplicates
-				(item, index, array) =>
-					array.findIndex((i) => JSON.stringify(i) === JSON.stringify(item)) === index
-			);
+
+			const seen = new Set();
+			chatFiles = chatFiles.filter((item) => {
+				const key = `${item.name}_${item.size}_${item.type}`;
+				if (!seen.has(key)) {
+					seen.add(key);
+					return true;
+				}
+				return false;
+			});
 
 			files = [];
 
@@ -849,12 +850,21 @@
 			files.push(...model.info.meta.knowledge);
 			messages = messages; // Trigger Svelte update
 		}
-		files.push(
+
+		// Combine all files from different sources
+		let combinedFiles = [
+			...files, // From knowledge (if any)
 			...(userMessage?.files ?? []).filter((item) =>
 				['doc', 'file', 'collection'].includes(item.type)
 			),
 			...(responseMessage?.files ?? []).filter((item) => ['web_search_results'].includes(item.type))
-		);
+		];
+
+		// Use a Set or Map to filter out duplicates based on a unique property, e.g., `id`
+		const uniqueFiles = Array.from(new Map(combinedFiles.map((file) => [file.id, file])).values());
+
+		// Update the `files` with only unique entries
+		files = uniqueFiles;
 
 		scrollToBottom();
 
@@ -1122,12 +1132,21 @@
 			files.push(...model.info.meta.knowledge);
 			messages = messages; // Trigger Svelte update
 		}
-		files.push(
+
+		// Combine all files from different sources
+		let combinedFiles = [
+			...files, // From knowledge (if any)
 			...(userMessage?.files ?? []).filter((item) =>
 				['doc', 'file', 'collection'].includes(item.type)
 			),
 			...(responseMessage?.files ?? []).filter((item) => ['web_search_results'].includes(item.type))
-		);
+		];
+
+		// Use a Set or Map to filter out duplicates based on a unique property, e.g., `id`
+		const uniqueFiles = Array.from(new Map(combinedFiles.map((file) => [file.id, file])).values());
+
+		// Update the `files` with only unique entries
+		files = uniqueFiles;
 
 		scrollToBottom();
 

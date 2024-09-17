@@ -8,7 +8,6 @@ from typing import Generic, Optional, TypeVar
 from urllib.parse import urlparse
 
 import chromadb
-import yaml
 from chromadb import Settings
 from pydantic import BaseModel
 from sqlalchemy import JSON, Column, DateTime, Integer, func
@@ -1036,10 +1035,6 @@ RAG_RERANKING_MODEL = PersistentConfig(
 if RAG_RERANKING_MODEL.value != "":
     log.info(f"Reranking model set: {RAG_RERANKING_MODEL.value}")
 
-SILICONFLOW_API_BASE_URL = os.environ.get("SILICONFLOW_API_BASE_URL", "https://api.siliconflow.cn/v1")
-
-SILICONFLOW_API_KEY = os.environ.get("SILICONFLOW_API_KEY", "")
-
 RAG_RERANKING_MODEL_AUTO_UPDATE = (
         os.environ.get("RAG_RERANKING_MODEL_AUTO_UPDATE", "").lower() == "true"
 )
@@ -1118,6 +1113,18 @@ RAG_OPENAI_API_KEY = PersistentConfig(
     "RAG_OPENAI_API_KEY",
     "rag.openai_api_key",
     os.getenv("RAG_OPENAI_API_KEY", OPENAI_API_KEY),
+)
+
+SILICONFLOW_API_BASE_URL = os.environ.get(
+    "SILICONFLOW_API_BASE_URL",
+    os.getenv("RAG_OPENAI_API_BASE_URL",
+              "https://api.siliconflow.cn/v1")
+)
+
+SILICONFLOW_API_KEY = os.environ.get(
+    "SILICONFLOW_API_KEY",
+    os.getenv("RAG_OPENAI_API_KEY",
+              OPENAI_API_KEY)
 )
 
 ENABLE_RAG_LOCAL_WEB_FETCH = (
@@ -1277,7 +1284,6 @@ AUTOMATIC1111_CFG_SCALE = PersistentConfig(
         else None
     ),
 )
-
 
 AUTOMATIC1111_SAMPLER = PersistentConfig(
     "AUTOMATIC1111_SAMPLERE",
