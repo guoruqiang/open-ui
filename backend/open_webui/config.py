@@ -762,6 +762,7 @@ ENABLE_MODEL_FILTER = PersistentConfig(
     "model_filter.enable",
     os.environ.get("ENABLE_MODEL_FILTER", "False").lower() == "true",
 )
+
 MODEL_FILTER_LIST = os.environ.get("MODEL_FILTER_LIST", "")
 MODEL_FILTER_LIST = PersistentConfig(
     "MODEL_FILTER_LIST",
@@ -954,7 +955,7 @@ TIKA_SERVER_URL = PersistentConfig(
 )
 
 RAG_TOP_K = PersistentConfig(
-    "RAG_TOP_K", "rag.top_k", int(os.environ.get("RAG_TOP_K", "5"))
+    "RAG_TOP_K", "rag.top_k", int(os.environ.get("RAG_TOP_K", "3"))
 )
 RAG_RELEVANCE_THRESHOLD = PersistentConfig(
     "RAG_RELEVANCE_THRESHOLD",
@@ -1070,7 +1071,7 @@ else:
     DEVICE_TYPE = "cpu"
 
 CHUNK_SIZE = PersistentConfig(
-    "CHUNK_SIZE", "rag.chunk_size", int(os.environ.get("CHUNK_SIZE", "1500"))
+    "CHUNK_SIZE", "rag.chunk_size", int(os.environ.get("CHUNK_SIZE", "1000"))
 )
 CHUNK_OVERLAP = PersistentConfig(
     "CHUNK_OVERLAP",
@@ -1525,6 +1526,20 @@ AUDIO_TTS_SPLIT_ON = PersistentConfig(
     "AUDIO_TTS_SPLIT_ON",
     "audio.tts.split_on",
     os.getenv("AUDIO_TTS_SPLIT_ON", "punctuation"),
+)
+
+AUDIO_TTS_AZURE_SPEECH_REGION = PersistentConfig(
+    "AUDIO_TTS_AZURE_SPEECH_REGION",
+    "audio.tts.azure.speech_region",
+    os.getenv("AUDIO_TTS_AZURE_SPEECH_REGION", "eastus"),
+)
+
+AUDIO_TTS_AZURE_SPEECH_OUTPUT_FORMAT = PersistentConfig(
+    "AUDIO_TTS_AZURE_SPEECH_OUTPUT_FORMAT",
+    "audio.tts.azure.speech_output_format",
+    os.getenv(
+        "AUDIO_TTS_AZURE_SPEECH_OUTPUT_FORMAT", "audio-24khz-160kbitrate-mono-mp3"
+    ),
 )
 
 ####################################

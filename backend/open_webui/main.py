@@ -13,27 +13,6 @@ from typing import Optional
 
 import aiohttp
 import requests
-from authlib.integrations.starlette_client import OAuth
-from authlib.oidc.core import UserInfo
-from fastapi import (
-    Depends,
-    FastAPI,
-    File,
-    Form,
-    HTTPException,
-    Request,
-    UploadFile,
-    status,
-)
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from sqlalchemy import text
-from starlette.exceptions import HTTPException as StarletteHTTPException
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import RedirectResponse, Response, StreamingResponse
 
 from open_webui.apps.audio.main import app as audio_app
 from open_webui.apps.filter.main import app as filter_app
@@ -60,6 +39,11 @@ from open_webui.apps.webui.models.models import Models
 from open_webui.apps.webui.models.users import UserModel, Users, change_init_background_random_image_url
 from open_webui.apps.webui.routers.users import change_background_random_image_url
 from open_webui.apps.webui.utils import load_function_module_by_id
+
+from authlib.integrations.starlette_client import OAuth
+from authlib.oidc.core import UserInfo
+
+
 from open_webui.config import (
     CACHE_DIR,
     CORS_ALLOW_ORIGIN,
@@ -102,6 +86,28 @@ from open_webui.env import (
     WEBUI_URL,
     WEBUI_NAME,
 )
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    UploadFile,
+    status,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel
+from sqlalchemy import text
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import RedirectResponse, Response, StreamingResponse
+
+from open_webui.utils.security_headers import SecurityHeadersMiddleware
+
 from open_webui.utils.misc import (
     add_or_update_system_message,
     get_last_user_message,
@@ -789,6 +795,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.add_middleware(SecurityHeadersMiddleware)
+
 
 @app.middleware("http")
 async def commit_session_after_request(request: Request, call_next):
@@ -1014,7 +1022,7 @@ async def get_models(user=Depends(get_verified_user)):
     ]
 
     if app.state.config.ENABLE_MODEL_FILTER:
-        if user.role != "admin":
+        if str(user.role) not in ["admin", "vip", "svip"]:
             models = list(
                 filter(
                     lambda model: model["id"] in app.state.config.MODEL_FILTER_LIST,
@@ -1037,7 +1045,7 @@ async def generate_chat_completions(form_data: dict, user=Depends(get_verified_u
         )
 
     if app.state.config.ENABLE_MODEL_FILTER:
-        if user.role == "user" and model_id not in app.state.config.MODEL_FILTER_LIST:
+        if str(user.role) not in ["admin", "vip", "svip"] and model_id not in app.state.config.MODEL_FILTER_LIST:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Model not found",
@@ -1421,9 +1429,9 @@ async def generate_title(form_data: dict, user=Depends(get_verified_user)):
 
     # Check if the user has a custom task model
     # If the user has a custom task model, use that model
-    model_id = get_task_model_id(model_id)
+    task_model_id = get_task_model_id(model_id)
 
-    print(model_id)
+    print(task_model_id)
 
     if app.state.config.TITLE_GENERATION_PROMPT_TEMPLATE != "":
         template = app.state.config.TITLE_GENERATION_PROMPT_TEMPLATE
@@ -1450,10 +1458,16 @@ Prompt: {{prompt:middletruncate:8000}}"""
     )
 
     payload = {
-        "model": model_id,
+        "model": task_model_id,
         "messages": [{"role": "user", "content": content}],
         "stream": False,
-        "max_tokens": 50,
+        **(
+            {"max_tokens": 50}
+            if app.state.MODELS[task_model_id]["owned_by"] == "ollama"
+            else {
+                "max_completion_tokens": 50,
+            }
+        ),
         "chat_id": form_data.get("chat_id", None),
         "metadata": {"task": str(TASKS.TITLE_GENERATION)},
     }
@@ -1498,9 +1512,8 @@ async def generate_search_query(form_data: dict, user=Depends(get_verified_user)
 
     # Check if the user has a custom task model
     # If the user has a custom task model, use that model
-    model_id = get_task_model_id(model_id)
-
-    print(model_id)
+    task_model_id = get_task_model_id(model_id)
+    print(task_model_id)
 
     if app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE != "":
         template = app.state.config.SEARCH_QUERY_GENERATION_PROMPT_TEMPLATE
@@ -1522,10 +1535,16 @@ Search Query:"""
     print("content", content)
 
     payload = {
-        "model": model_id,
+        "model": task_model_id,
         "messages": [{"role": "user", "content": content}],
         "stream": False,
-        "max_tokens": 30,
+        **(
+            {"max_tokens": 30}
+            if app.state.MODELS[task_model_id]["owned_by"] == "ollama"
+            else {
+                "max_completion_tokens": 30,
+            }
+        ),
         "metadata": {"task": str(TASKS.QUERY_GENERATION)},
     }
 
@@ -1564,9 +1583,8 @@ async def generate_emoji(form_data: dict, user=Depends(get_verified_user)):
 
     # Check if the user has a custom task model
     # If the user has a custom task model, use that model
-    model_id = get_task_model_id(model_id)
-
-    print(model_id)
+    task_model_id = get_task_model_id(model_id)
+    print(task_model_id)
 
     template = '''
 Your task is to reflect the speaker's likely facial expression through a fitting emoji. Interpret emotions from the message and reflect their facial expression using fitting, diverse emojis (e.g., 😊, 😢, 😡, 😱).
@@ -1584,10 +1602,16 @@ Message: """{{prompt}}"""
     )
 
     payload = {
-        "model": model_id,
+        "model": task_model_id,
         "messages": [{"role": "user", "content": content}],
         "stream": False,
-        "max_tokens": 4,
+        **(
+            {"max_tokens": 4}
+            if app.state.MODELS[task_model_id]["owned_by"] == "ollama"
+            else {
+                "max_completion_tokens": 4,
+            }
+        ),
         "chat_id": form_data.get("chat_id", None),
         "metadata": {"task": str(TASKS.EMOJI_GENERATION)},
     }

@@ -109,7 +109,7 @@ from open_webui.config import (
 )
 from open_webui.config import SILICONFLOW_API_KEY, SILICONFLOW_API_BASE_URL, ENABLE_BASE64
 from open_webui.constants import ERROR_MESSAGES
-from open_webui.env import SRC_LOG_LEVELS, DEVICE_TYPE
+from open_webui.env import SRC_LOG_LEVELS, DEVICE_TYPE, DOCKER
 from open_webui.utils.misc import (
     calculate_sha256,
     calculate_sha256_string,
@@ -183,14 +183,14 @@ app.state.config.RAG_WEB_SEARCH_CONCURRENT_REQUESTS = RAG_WEB_SEARCH_CONCURRENT_
 
 
 def update_embedding_model(
-        embedding_model: str,
-        update_model: bool = False,
+    embedding_model: str,
+    auto_update: bool = False,
 ):
     if embedding_model and app.state.config.RAG_EMBEDDING_ENGINE == "":
         import sentence_transformers
 
         app.state.sentence_transformer_ef = sentence_transformers.SentenceTransformer(
-            get_model_path(embedding_model, update_model),
+            get_model_path(embedding_model, auto_update),
             device=DEVICE_TYPE,
             trust_remote_code=RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE,
         )
@@ -255,17 +255,31 @@ class Reranking(BaseModel):
 
 
 def update_reranking_model(
-        reranking_model: str,
-        update_model: bool = False,
+    reranking_model: str,
+    auto_update: bool = False,
 ):
     if reranking_model:
         if any(model in reranking_model for model in ["jinaai/jina-colbert-v2"]):
-            class Colbert:
+
+            class ColBERT:
                 def __init__(self, name) -> None:
+                    print("ColBERT: Loading model", name)
                     self.device = "cuda" if torch.cuda.is_available() else "cpu"
-                    self.ckpt = Checkpoint(name, colbert_config=ColBERTConfig()).to(
-                        self.device
-                    )
+
+                    if DOCKER:
+                        # This is a workaround for the issue with the docker container
+                        # where the torch extension is not loaded properly
+                        # and the following error is thrown:
+                        # /root/.cache/torch_extensions/py311_cpu/segmented_maxsim_cpp/segmented_maxsim_cpp.so: cannot open shared object file: No such file or directory
+
+                        lock_file = "/root/.cache/torch_extensions/py311_cpu/segmented_maxsim_cpp/lock"
+                        if os.path.exists(lock_file):
+                            os.remove(lock_file)
+
+                    self.ckpt = Checkpoint(
+                        name,
+                        colbert_config=ColBERTConfig(model_name=name),
+                    ).to(self.device)
                     pass
             
                 def calculate_similarity_scores(
@@ -322,8 +336,15 @@ def update_reranking_model(
                     )
             
                     return scores
-            
-            app.state.sentence_transformer_rf = Colbert(reranking_model)
+
+            try:
+                app.state.sentence_transformer_rf = ColBERT(
+                    get_model_path(reranking_model, auto_update)
+                )
+            except Exception as e:
+                log.error(f"ColBERT: {e}")
+                app.state.sentence_transformer_rf = None
+                app.state.config.ENABLE_RAG_HYBRID_SEARCH = False
         else:
             try:
                 if "BAAI/bge-reranker-v2-m3" in reranking_model:
