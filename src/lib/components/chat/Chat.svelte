@@ -2,6 +2,7 @@
 	import { v4 as uuidv4 } from 'uuid';
 	import { toast } from 'svelte-sonner';
 	import mermaid from 'mermaid';
+	import { PaneGroup, Pane, PaneResizer } from 'paneforge';
 
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
@@ -26,7 +27,9 @@
 		showControls,
 		showCallOverlay,
 		currentChatPage,
-		temporaryChatEnabled
+		temporaryChatEnabled,
+		mobile,
+		showOverview
 	} from '$lib/stores';
 	import {
 		convertMessagesToHistory,
@@ -64,12 +67,14 @@
 	import Navbar from '$lib/components/layout/Navbar.svelte';
 	import ChatControls from './ChatControls.svelte';
 	import EventConfirmDialog from '../common/ConfirmDialog.svelte';
+	import EllipsisVertical from '../icons/EllipsisVertical.svelte';
 
 	const i18n: Writable<i18nType> = getContext('i18n');
 
 	export let chatIdProp = '';
 	let loaded = false;
 	const eventTarget = new EventTarget();
+	let controlPane;
 
 	let stopResponseFlag = false;
 	let autoScroll = true;
@@ -83,8 +88,6 @@
 	let eventConfirmationInputPlaceholder = '';
 	let eventConfirmationInputValue = '';
 	let eventCallback = null;
-
-	let showModelSelector = true;
 
 	let selectedModels = [''];
 	let atSelectedModel: Model | undefined;
@@ -145,6 +148,7 @@
 	}
 
 	const showMessage = async (message) => {
+		const _chatId = JSON.parse(JSON.stringify($chatId));
 		let _messageId = JSON.parse(JSON.stringify(message.id));
 
 		let messageChildrenIds = history.messages[_messageId].childrenIds;
@@ -164,6 +168,9 @@
 		if (messageElement) {
 			messageElement.scrollIntoView({ behavior: 'smooth' });
 		}
+
+		await tick();
+		saveChatHandler(_chatId);
 	};
 
 	const chatEventHandler = async (event, cb) => {
@@ -279,6 +286,30 @@
 				await goto('/');
 			}
 		}
+
+		showControls.subscribe(async (value) => {
+			if (controlPane && !$mobile) {
+				try {
+					if (value) {
+						const currentSize = controlPane.getSize();
+
+						if (currentSize === 0) {
+							const size = parseInt(localStorage?.chatControlsSize ?? '30');
+							controlPane.resize(size ? size : 30);
+						}
+					} else {
+						controlPane.resize(0);
+					}
+				} catch (e) {
+					// ignore
+				}
+			}
+
+			if (!value) {
+				showCallOverlay.set(false);
+				showOverview.set(false);
+			}
+		});
 	});
 
 	onDestroy(() => {
@@ -311,6 +342,8 @@
 
 		if ($page.url.searchParams.get('models')) {
 			selectedModels = $page.url.searchParams.get('models')?.split(',');
+		} else if ($page.url.searchParams.get('model')) {
+			selectedModels = $page.url.searchParams.get('model')?.split(',');
 		} else if ($settings?.models) {
 			selectedModels = $settings?.models;
 		} else if ($config?.default_models) {
@@ -1784,122 +1817,114 @@
 			/>
 		{/if}
 
-		<Navbar
-			{title}
-			bind:selectedModels
-			bind:showModelSelector
-			shareEnabled={messages.length > 0}
-			{chat}
-			{initNewChat}
-		/>
+		<Navbar {chat} {title} bind:selectedModels shareEnabled={messages.length > 0} {initNewChat} />
 
-		{#if $banners.length > 0 && messages.length === 0 && !$chatId && selectedModels.length <= 1}
-			<div
-				class="absolute top-[4.25rem] w-full {$showSidebar
-					? 'md:max-w-[calc(100%-260px)]'
-					: ''} {$showControls ? 'lg:pr-[26rem]' : ''} z-20"
-			>
-				<div class=" flex flex-col gap-1 w-full">
-					{#each $banners.filter( (b) => (b.dismissible ? !JSON.parse(localStorage.getItem('dismissedBannerIds') ?? '[]').includes(b.id) : true) ) as banner}
-						<Banner
-							{banner}
-							on:dismiss={(e) => {
-								const bannerId = e.detail;
+		<PaneGroup direction="horizontal" class="w-full h-full">
+			<Pane defaultSize={50} class="h-full flex w-full relative">
+				{#if $banners.length > 0 && messages.length === 0 && !$chatId && selectedModels.length <= 1}
+					<div class="absolute top-3 left-0 right-0 w-full z-20">
+						<div class=" flex flex-col gap-1 w-full">
+							{#each $banners.filter( (b) => (b.dismissible ? !JSON.parse(localStorage.getItem('dismissedBannerIds') ?? '[]').includes(b.id) : true) ) as banner}
+								<Banner
+									{banner}
+									on:dismiss={(e) => {
+										const bannerId = e.detail;
 
-								localStorage.setItem(
-									'dismissedBannerIds',
-									JSON.stringify(
-										[
-											bannerId,
-											...JSON.parse(localStorage.getItem('dismissedBannerIds') ?? '[]')
-										].filter((id) => $banners.find((b) => b.id === id))
-									)
-								);
+										localStorage.setItem(
+											'dismissedBannerIds',
+											JSON.stringify(
+												[
+													bannerId,
+													...JSON.parse(localStorage.getItem('dismissedBannerIds') ?? '[]')
+												].filter((id) => $banners.find((b) => b.id === id))
+											)
+										);
+									}}
+								/>
+							{/each}
+						</div>
+					</div>
+				{/if}
+
+				<div class="flex flex-col flex-auto z-10 w-full">
+					<div
+						class=" pb-2.5 flex flex-col justify-between w-full flex-auto overflow-auto h-0 max-w-full z-10 scrollbar-hidden"
+						id="messages-container"
+						bind:this={messagesContainerElement}
+						on:scroll={(e) => {
+							autoScroll =
+								messagesContainerElement.scrollHeight - messagesContainerElement.scrollTop <=
+								messagesContainerElement.clientHeight + 5;
+						}}
+					>
+						<div class=" h-full w-full flex flex-col {chatIdProp ? 'py-4' : 'pt-2 pb-4'}">
+							<Messages
+								chatId={$chatId}
+								bind:history
+								bind:autoScroll
+								bind:prompt
+								{messages}
+								{selectedModels}
+								{processing}
+								{sendPrompt}
+								{continueGeneration}
+								{regenerateResponse}
+								{mergeResponses}
+								{chatActionHandler}
+								{showMessage}
+								bottomPadding={files.length > 0}
+							/>
+						</div>
+					</div>
+
+					<div class="">
+						<MessageInput
+							bind:files
+							bind:prompt
+							bind:autoScroll
+							bind:selectedToolIds
+							bind:webSearchEnabled
+							bind:atSelectedModel
+							{messages}
+							{selectedModels}
+							availableToolIds={selectedModelIds.reduce((a, e, i, arr) => {
+								const model = $models.find((m) => m.id === e);
+								if (model?.info?.meta?.toolIds ?? false) {
+									return [...new Set([...a, ...model.info.meta.toolIds])];
+								}
+								return a;
+							}, [])}
+							transparentBackground={$settings?.backgroundImageUrl ?? false}
+							{submitPrompt}
+							{stopResponse}
+							on:call={async () => {
+								await showControls.set(true);
 							}}
 						/>
-					{/each}
+					</div>
 				</div>
-			</div>
-		{/if}
+			</Pane>
 
-		<div class="flex flex-col flex-auto z-10">
-			<div
-				class=" pb-2.5 flex flex-col justify-between w-full flex-auto overflow-auto h-0 max-w-full z-10 scrollbar-hidden {$showControls
-					? 'lg:pr-[26rem]'
-					: ''}"
-				id="messages-container"
-				bind:this={messagesContainerElement}
-				on:scroll={(e) => {
-					autoScroll =
-						messagesContainerElement.scrollHeight - messagesContainerElement.scrollTop <=
-						messagesContainerElement.clientHeight + 5;
-				}}
-			>
-				<div class=" h-full w-full flex flex-col {chatIdProp ? 'py-4' : 'pt-2 pb-4'}">
-					<Messages
-						chatId={$chatId}
-						{selectedModels}
-						{processing}
-						bind:history
-						bind:messages
-						bind:autoScroll
-						bind:prompt
-						bottomPadding={files.length > 0}
-						{sendPrompt}
-						{continueGeneration}
-						{regenerateResponse}
-						{mergeResponses}
-						{chatActionHandler}
-						{showMessage}
-					/>
-				</div>
-			</div>
-
-			<div class={$showControls ? 'lg:pr-[26rem]' : ''}>
-				<MessageInput
-					bind:files
-					bind:prompt
-					bind:autoScroll
-					bind:selectedToolIds
-					bind:webSearchEnabled
-					bind:atSelectedModel
-					availableToolIds={selectedModelIds.reduce((a, e, i, arr) => {
-						const model = $models.find((m) => m.id === e);
-						if (model?.info?.meta?.toolIds ?? false) {
-							return [...new Set([...a, ...model.info.meta.toolIds])];
-						}
-						return a;
-					}, [])}
-					transparentBackground={$settings?.backgroundImageUrl ?? false}
-					{selectedModels}
-					{messages}
-					{submitPrompt}
-					{stopResponse}
-					on:call={() => {
-						showControls.set(true);
-					}}
-				/>
-			</div>
-		</div>
+			<ChatControls
+				bind:history
+				bind:chatFiles
+				bind:params
+				bind:files
+				bind:pane={controlPane}
+				chatId={$chatId}
+				modelId={selectedModelIds?.at(0) ?? null}
+				models={selectedModelIds.reduce((a, e, i, arr) => {
+					const model = $models.find((m) => m.id === e);
+					if (model) {
+						return [...a, model];
+					}
+					return a;
+				}, [])}
+				{submitPrompt}
+				{stopResponse}
+				{showMessage}
+				{eventTarget}
+			/>
+		</PaneGroup>
 	</div>
 {/if}
-
-<ChatControls
-	models={selectedModelIds.reduce((a, e, i, arr) => {
-		const model = $models.find((m) => m.id === e);
-		if (model) {
-			return [...a, model];
-		}
-		return a;
-	}, [])}
-	bind:history
-	bind:chatFiles
-	bind:params
-	bind:files
-	{submitPrompt}
-	{stopResponse}
-	{showMessage}
-	modelId={selectedModelIds?.at(0) ?? null}
-	chatId={$chatId}
-	{eventTarget}
-/>

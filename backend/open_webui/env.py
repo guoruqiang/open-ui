@@ -86,6 +86,7 @@ log_sources = [
     "RAG",
     "WEBHOOK",
     "FILTER",
+    "SOCKET",
 ]
 
 SRC_LOG_LEVELS = {}
@@ -109,7 +110,7 @@ WEBUI_FAVICON_URL = os.environ.get("WEBUI_FAVICON_URL", f"{WEBUI_URL}/favicon.pn
 # ENV (dev,test,prod)
 ####################################
 
-ENV = os.environ.get("ENV", "dev")
+ENV = os.environ.get("ENV", "prod")
 
 FROM_INIT_PY = os.environ.get("FROM_INIT_PY", "False").lower() == "true"
 
@@ -293,3 +294,7 @@ if WEBUI_AUTH and WEBUI_SECRET_KEY == "":
 ENABLE_WEBSOCKET_SUPPORT = (
     os.environ.get("ENABLE_WEBSOCKET_SUPPORT", "True").lower() == "true"
 )
+
+WEBSOCKET_MANAGER = os.environ.get("WEBSOCKET_MANAGER", "")
+
+WEBSOCKET_REDIS_URL = os.environ.get("WEBSOCKET_REDIS_URL", "redis://localhost:6379/0")
