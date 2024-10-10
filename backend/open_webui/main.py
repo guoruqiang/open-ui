@@ -73,8 +73,9 @@ from open_webui.config import (
     WEBHOOK_URL,
     WEBUI_AUTH,
     AppConfig,
-    run_migrations, BACKGROUND_RANDOM_IMAGE_URL, MODEL_STATUS, LOBECHAT_URL, MIDJOURNEY_URL, TURNSTILE_CHECK,
-    TURNSTILE_SITE_KEY
+    run_migrations, BACKGROUND_RANDOM_IMAGE_URL, MODEL_STATUS, LOBECHAT_URL, MIDJOURNEY_URL, TURNSTILE_SIGNUP_CHECK, TURNSTILE_LOGIN_CHECK,
+    TURNSTILE_SITE_KEY,
+    OPENAI_API_NOSTREAM_MODELS,
 )
 from open_webui.constants import ERROR_MESSAGES, TASKS, WEBHOOK_MESSAGES
 from open_webui.env import (
@@ -188,9 +189,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(
-    docs_url="/docs" if ENV == "dev" else None, redoc_url=None, lifespan=lifespan
-)
+app = FastAPI(docs_url=None, redoc_url=None, lifespan=lifespan)
 
 app.state.config = AppConfig()
 
@@ -1064,6 +1063,7 @@ async def generate_chat_completions(form_data: dict, user=Depends(get_verified_u
 
     model = app.state.MODELS[model_id]
     if model.get("pipe"):
+        log.info(f"Using pipeline for model: {model_id}")
         return await generate_function_chat_completion(form_data, user=user)
     if model["owned_by"] == "ollama":
         # Using /ollama/api/chat endpoint
@@ -1442,7 +1442,11 @@ async def update_task_config(form_data: TaskConfigForm, user=Depends(get_admin_u
 async def generate_title(form_data: dict, user=Depends(get_verified_user)):
     print("generate_title")
 
-    model_id = form_data["model"]
+    original_model_id = form_data["model"]
+
+    # Check if the user has a custom task model
+    # If the user has a custom task model, use that model
+    model_id = get_task_model_id(original_model_id)
     if model_id not in app.state.MODELS:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -1480,6 +1484,15 @@ Prompt: {{prompt:middletruncate:8000}}"""
         },
     )
 
+    # check if this is an OAI no-stream model and
+    if model_id in OPENAI_API_NOSTREAM_MODELS:
+        log.info(f"Model {model_id} needs token argument patching in generate_title")
+        # patch max_tokens -> max_completion_tokens and stream if 🍓
+        token_args = {"max_completion_tokens": 50}
+    else:
+        log.info(f"Model {model_id} does not need token argument patching in generate_title")
+        token_args = {"max_tokens": 50}
+
     payload = {
         "model": task_model_id,
         "messages": [{"role": "user", "content": content}],
@@ -1493,6 +1506,7 @@ Prompt: {{prompt:middletruncate:8000}}"""
         ),
         "chat_id": form_data.get("chat_id", None),
         "metadata": {"task": str(TASKS.TITLE_GENERATION)},
+        **token_args
     }
     log.debug(payload)
 
@@ -2069,7 +2083,8 @@ async def get_app_config(request: Request):
         "lobeChat_url": LOBECHAT_URL,
         "midjourney_url": MIDJOURNEY_URL,
         "random_image_url": app.state.config.BACKGROUND_RANDOM_IMAGE_URL,
-        "turnstile_check": TURNSTILE_CHECK,
+        "turnstile_login_check": TURNSTILE_LOGIN_CHECK,
+        "turnstile_signup_check": TURNSTILE_SIGNUP_CHECK,
         "turnstile_site_key": TURNSTILE_SITE_KEY,
         "version": VERSION,
         "default_locale": str(DEFAULT_LOCALE),

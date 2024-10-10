@@ -20,7 +20,7 @@
 
 	import { blobToFile, findWordIndices } from '$lib/utils';
 	import { transcribeAudio } from '$lib/apis/audio';
-	import { uploadFile } from '$lib/apis/files';
+	import { uploadFile, base64ToFile } from '$lib/apis/files';
 
 	import {
 		SUPPORTED_FILE_TYPE,
@@ -73,8 +73,20 @@
 	export let messages = [];
 
 	let visionCapableModels = [];
+	let notBase64CapableModels = [];
+
 	$: visionCapableModels = [...(atSelectedModel ? [atSelectedModel] : selectedModels)].filter(
-		(model) => $models.find((m) => m.id === model)?.info?.meta?.capabilities?.vision ?? true
+		(model) =>
+			$models.find((m) => (atSelectedModel ? m.id === model.id : m.id === model))?.info?.meta
+				?.capabilities?.vision ?? false
+	);
+
+	$: notBase64CapableModels = [...(atSelectedModel ? [atSelectedModel] : selectedModels)].filter(
+		(model) =>
+			!(
+				$models.find((m) => (atSelectedModel ? m.id === model.id : m.id === model))?.info?.meta
+					?.capabilities?.base64 ?? false
+			)
 	);
 
 	$: if (prompt) {
@@ -92,8 +104,56 @@
 		});
 	};
 
+	const compressImage = (file) => {
+		return new Promise((resolve, reject) => {
+			const img = new Image();
+			const originalImageUrl = URL.createObjectURL(file);
+			img.src = originalImageUrl;
+
+			img.onload = () => {
+				const canvas = document.createElement('canvas');
+				const ctx = canvas.getContext('2d');
+
+				canvas.width = img.width;
+				canvas.height = img.height;
+
+				ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+				const maxFileSize = 2 * 1024 * 1024;
+				const originalFileSize = file.size;
+				let compressionRatio = 1.0;
+
+				// 如果原始大小大于目标大小，计算出初步猜测的压缩比率
+				if (originalFileSize > maxFileSize) {
+					compressionRatio = maxFileSize / originalFileSize;
+
+					// 初步把压缩率限制为 0.1 - 1.0 之间
+					compressionRatio = Math.max(0.1, Math.min(1.0, compressionRatio));
+				}
+
+				let base64 = canvas.toDataURL('image/jpeg', compressionRatio);
+				let compressedFile = base64ToFile(base64, `${uuidv4()}.jpg`);
+				let compressedFileSize = compressedFile.size;
+
+				if (compressedFileSize > maxFileSize) {
+					compressionRatio *= maxFileSize / compressedFileSize;
+					base64 = canvas.toDataURL('image/jpeg', compressionRatio);
+					compressedFile = base64ToFile(base64, `${uuidv4()}.jpg`);
+					compressedFileSize = compressedFile.size;
+				}
+
+				console.log(`Final quality: ${compressionRatio}`);
+				console.log(`Final file size: ${(compressedFileSize / 1024 / 1024).toFixed(2)} MB`);
+
+				resolve(compressedFile);
+			};
+
+			img.onerror = (e) => reject(new Error('Image could not be loaded.'));
+		});
+	};
+
 	const uploadImageHandler = async (file) => {
-		console.log(file);
+		console.log(`Original file size: ${(file.size / 1024 / 1024).toFixed(2)} MB`);
 
 		const imageItem = {
 			id: null,
@@ -107,9 +167,20 @@
 
 		files = [...files, imageItem];
 
+		let compressedFile;
+		try {
+			compressedFile = await compressImage(file);
+		} catch (error) {
+			console.log('Image compression failed:', error.message);
+			compressedFile = file;
+		}
+
+		imageItem.name = compressedFile.name;
+		imageItem.size = compressedFile.size;
+
 		try {
 			let uploadedFile = null;
-			uploadedFile = await uploadFile(localStorage.token, file);
+			uploadedFile = await uploadFile(localStorage.token, compressedFile);
 			if (uploadedFile) {
 				const image_url = `${WEBUI_API_BASE_URL}/files/${uploadedFile.id}/preview`;
 				imageItem.id = uploadFile.id;
@@ -286,7 +357,9 @@
 			if (isImage) {
 				await uploadImageHandler(file);
 			} else {
-				await uploadFileHandler(file, dataURL, $settings?.enableFileUpdateBase64 ?? false);
+				const shouldUpdateBase64 = $settings?.enableFileUpdateBase64 ?? false;
+				const modelsUpdateBase64 = shouldUpdateBase64 && notBase64CapableModels.length === 0;
+				await uploadFileHandler(file, dataURL, modelsUpdateBase64);
 			}
 		} catch (error) {
 			console.error('Error reading file:', error);
@@ -633,7 +706,7 @@
 									class="scrollbar-hidden bg-gray-50 dark:bg-gray-850 dark:text-gray-100 outline-none w-full py-3 px-1 rounded-xl resize-none h-[48px]"
 									placeholder={chatInputPlaceholder !== ''
 										? chatInputPlaceholder
-										: $i18n.t('Send a Message')}
+										: $i18n.t('Send a Message and Use @ to Select a Model')}
 									bind:value={prompt}
 									on:keypress={(e) => {
 										if (
