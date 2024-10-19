@@ -18,6 +18,8 @@ type ResponseUsage = {
 	completion_tokens: number;
 	/** Sum of the above two fields */
 	total_tokens: number;
+	/** Any other fields that aren't part of the base OpenAI spec */
+	[other: string]: unknown;
 };
 
 // createOpenAITextStream takes a responseBody with a SSE response,
@@ -74,6 +76,7 @@ async function* openAIStreamToIterator(
 				value: parsedData.choices?.[0]?.delta?.content ?? '',
 				usage: parsedData.usage
 			};
+			await sleep(5);
 		} catch (e) {
 			console.error('Error extracting delta from SSE event:', e);
 		}
@@ -96,6 +99,7 @@ async function* streamLargeDeltasAsRandomChunks(
 		}
 		let content = textStreamUpdate.value;
 		if (content.length < 5) {
+			await sleep(5);
 			yield { done: false, value: content };
 			continue;
 		}
@@ -110,6 +114,7 @@ async function* streamLargeDeltasAsRandomChunks(
 			}
 			content = content.slice(chunkSize);
 		}
+		await sleep(5);
 	}
 }
 

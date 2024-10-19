@@ -34,8 +34,8 @@ class ERROR_MESSAGES(str, Enum):
 
     ID_TAKEN = "Uh-oh! This id is already registered. Please choose another id string."
     MODEL_ID_TAKEN = "Uh-oh! This model id is already registered. Please choose another model id string."
-
     NAME_TAG_TAKEN = "Uh-oh! This name tag is already registered. Please choose another name tag string."
+
     INVALID_TOKEN = (
         "Your session has expired or the token is invalid. Please sign in again."
     )
@@ -92,6 +92,15 @@ class ERROR_MESSAGES(str, Enum):
         "The Ollama API is disabled. Please enable it to use this feature."
     )
 
+    FILE_TOO_LARGE = (
+        lambda size="": f"Oops! The file you're trying to upload is too large. Please upload a file that is less than {size}."
+    )
+
+    DUPLICATE_CONTENT = (
+        "Duplicate content detected. Please provide unique content to proceed."
+    )
+    FILE_NOT_PROCESSED = "Extracted content is not available for this file. Please ensure that the file is processed before proceeding."
+
 
 class TASKS(str, Enum):
     def __str__(self) -> str:
@@ -102,3 +111,4 @@ class TASKS(str, Enum):
     EMOJI_GENERATION = "emoji_generation"
     QUERY_GENERATION = "query_generation"
     FUNCTION_CALLING = "function_calling"
+    MOA_RESPONSE_GENERATION = "moa_response_generation"
