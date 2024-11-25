@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { DropdownMenu } from 'bits-ui';
 	import { createEventDispatcher, getContext, onMount } from 'svelte';
+	import { toast } from 'svelte-sonner';
 
-	import { flyAndScale } from '$lib/utils/transitions';
 	import { goto } from '$app/navigation';
 	import ArchiveBox from '$lib/components/icons/ArchiveBox.svelte';
 	import {
@@ -15,6 +15,8 @@
 	} from '$lib/stores';
 	import { fade, slide } from 'svelte/transition';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import { getSpeechPreviewUrl } from '$lib/apis/audio';
+	import { page } from '$app/stores';
 
 	const i18n = getContext('i18n');
 
@@ -83,7 +85,6 @@
 					class="flex rounded-md py-2.5 px-3.5 w-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
 					on:click={() => {
 						window.open($config?.instructions_url, '_blank');
-						showDropdown = false;
 					}}
 				>
 					<div class=" self-center mr-3">
@@ -111,7 +112,6 @@
 					class="flex rounded-md py-2.5 px-3.5 w-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
 					on:click={() => {
 						window.open($config?.model_status, '_blank');
-						showDropdown = false;
 					}}
 				>
 					<div class=" self-center mr-3">
@@ -137,7 +137,6 @@
 					class="flex rounded-md py-2.5 px-3.5 w-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
 					on:click={() => {
 						window.open($config?.lobeChat_url, '_blank');
-						showDropdown = false;
 					}}
 				>
 					<div class="self-center mr-3">
@@ -158,12 +157,66 @@
 				</button>
 			{/if}
 
+			{#if $config?.speech_preview}
+				<button
+					class="flex rounded-md py-2.5 px-3.5 w-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+					on:click={async () => {
+						try {
+							const allowedRoles = ['admin', 'svip', 'vip'];
+							if (!allowedRoles.includes(role)) {
+								toast.error('快找小羊升级您的等级体验语音预览吧！');
+								return;
+							}
+
+							try {
+								// await 等待异步获取语音预览URL
+								const speechPreviewJson = await getSpeechPreviewUrl(
+									localStorage.token,
+									$page.url.href
+								);
+
+								if (speechPreviewJson?.url) {
+									window.location.href = speechPreviewJson.url;
+								} else {
+									toast.error('语音预览功能暂时不可用，请稍后再试！');
+								}
+							} catch (error) {
+								toast.error('网络错误，请检查网络连接');
+								console.error(error);
+							}
+						} catch (error) {
+							toast.error('语音预览功能暂时不可用，请稍后再试！');
+							console.error('点击事件发生错误', error);
+						}
+					}}
+				>
+					<div class=" self-center mr-3">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							fill="none"
+							viewBox="0 0 17 17"
+							stroke-width="1.25"
+							stroke="currentColor"
+							class="size-5"
+							><path
+								d="M8 2C4.262 2 1 4.57 1 8c0 1.86.98 3.486 2.455 4.566a3.472 3.472 0 0 1-.469 1.26.75.75 0 0 0 .713 1.14 6.961 6.961 0 0 0 3.06-1.06c.403.062.818.094 1.241.094 3.738 0 7-2.57 7-6s-3.262-6-7-6ZM5 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Zm7-1a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM8 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z"
+							></path></svg
+						>
+					</div>
+					<div class=" self-center font-medium">{$i18n.t('Speech Preview')}</div>
+				</button>
+			{/if}
+
 			{#if $config?.midjourney_url}
 				<button
 					class="flex rounded-md py-2.5 px-3.5 w-full hover:bg-gray-100 dark:hover:bg-gray-800 transition"
 					on:click={() => {
-						window.open($config?.midjourney_url, '_blank');
-						showDropdown = false;
+						const allowedRoles = ['admin', 'svip', 'vip'];
+						if (allowedRoles.includes(role)) {
+							window.open($config?.midjourney_url, '_blank');
+						} else {
+							toast.error('快找小羊升级您的等级体验Midjourney吧！');
+						}
 					}}
 				>
 					<div class="self-center mr-3">

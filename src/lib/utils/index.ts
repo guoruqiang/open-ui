@@ -53,9 +53,10 @@ export const sanitizeResponseContent = (content: string) => {
 export const processResponseContent = (content: string) => {
 	let cleanSquareBracket = '';
 	let cleanRoundBracket = '';
+	let cleanDoubleDollar = ''
 
-	const pattern = /(```[\s\S]*?```|`.*?`)|\\\[([\s\S]*?[^\\])\\\]|\\\((.*?)\\\)/g;
-	return content.replace(pattern, (match, codeBlock, squareBracket, roundBracket) => {
+	const pattern = /(```[\s\S]*?```|`.*?`)|\\\[([\s\S]*?[^\\])\\\]|\\\((.*?)\\\)|\$\$([\s\S]*?)\$\$/g;
+	return content.replace(pattern, (match, codeBlock, squareBracket, roundBracket, doubleDollar) => {
 		if (codeBlock) {
 			return codeBlock;
 		} else if (squareBracket) {
@@ -64,6 +65,9 @@ export const processResponseContent = (content: string) => {
 		} else if (roundBracket) {
 			cleanRoundBracket = roundBracket.replace(/\s*\n\s*/g, ' ').trim();
 			return `$ ${cleanRoundBracket} $`;
+		} else if (doubleDollar) {
+			cleanDoubleDollar = doubleDollar.replace(/\s*\n\s*/g, ' ').trim();
+			return `$$ ${cleanDoubleDollar} $$`;
 		}
 		return match.replace(/\s*\n\s*/g, ' ').trim();
 	});

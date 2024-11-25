@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import uuid
+import random
 from functools import lru_cache
 from pathlib import Path
 
@@ -22,6 +23,8 @@ from open_webui.config import (
     AUDIO_TTS_VOICE,
     AUDIO_TTS_AZURE_SPEECH_REGION,
     AUDIO_TTS_AZURE_SPEECH_OUTPUT_FORMAT,
+    AUDIO_SPEECH_PREVIEW_BASE_URL,
+    AUDIO_SPEECH_PREVIEW_API_KEYS,
     CACHE_DIR,
     CORS_ALLOW_ORIGIN,
     WHISPER_MODEL,
@@ -67,6 +70,8 @@ app.state.config.TTS_SPLIT_ON = AUDIO_TTS_SPLIT_ON
 
 app.state.config.TTS_AZURE_SPEECH_REGION = AUDIO_TTS_AZURE_SPEECH_REGION
 app.state.config.TTS_AZURE_SPEECH_OUTPUT_FORMAT = AUDIO_TTS_AZURE_SPEECH_OUTPUT_FORMAT
+app.state.config.AUDIO_SPEECH_PREVIEW_BASE_URL = AUDIO_SPEECH_PREVIEW_BASE_URL
+app.state.config.AUDIO_SPEECH_PREVIEW_API_KEYS = AUDIO_SPEECH_PREVIEW_API_KEYS
 
 # setting device type for whisper model
 whisper_device_type = DEVICE_TYPE if DEVICE_TYPE and DEVICE_TYPE == "cuda" else "cpu"
@@ -86,6 +91,8 @@ class TTSConfigForm(BaseModel):
     SPLIT_ON: str
     AZURE_SPEECH_REGION: str
     AZURE_SPEECH_OUTPUT_FORMAT: str
+    AUDIO_SPEECH_PREVIEW_BASE_URL: str
+    AUDIO_SPEECH_PREVIEW_API_KEYS: str
 
 
 class STTConfigForm(BaseModel):
@@ -140,6 +147,8 @@ async def get_audio_config(user=Depends(get_admin_user)):
             "SPLIT_ON": app.state.config.TTS_SPLIT_ON,
             "AZURE_SPEECH_REGION": app.state.config.TTS_AZURE_SPEECH_REGION,
             "AZURE_SPEECH_OUTPUT_FORMAT": app.state.config.TTS_AZURE_SPEECH_OUTPUT_FORMAT,
+            "AUDIO_SPEECH_PREVIEW_BASE_URL": app.state.config.AUDIO_SPEECH_PREVIEW_BASE_URL,
+            "AUDIO_SPEECH_PREVIEW_API_KEYS": app.state.config.AUDIO_SPEECH_PREVIEW_API_KEYS,
         },
         "stt": {
             "OPENAI_API_BASE_URL": app.state.config.STT_OPENAI_API_BASE_URL,
@@ -165,6 +174,8 @@ async def update_audio_config(
     app.state.config.TTS_AZURE_SPEECH_OUTPUT_FORMAT = (
         form_data.tts.AZURE_SPEECH_OUTPUT_FORMAT
     )
+    app.state.config.AUDIO_SPEECH_PREVIEW_BASE_URL = form_data.tts.AUDIO_SPEECH_PREVIEW_BASE_URL
+    app.state.config.AUDIO_SPEECH_PREVIEW_API_KEYS = form_data.tts.AUDIO_SPEECH_PREVIEW_API_KEYS
 
     app.state.config.STT_OPENAI_API_BASE_URL = form_data.stt.OPENAI_API_BASE_URL
     app.state.config.STT_OPENAI_API_KEY = form_data.stt.OPENAI_API_KEY
@@ -182,6 +193,8 @@ async def update_audio_config(
             "SPLIT_ON": app.state.config.TTS_SPLIT_ON,
             "AZURE_SPEECH_REGION": app.state.config.TTS_AZURE_SPEECH_REGION,
             "AZURE_SPEECH_OUTPUT_FORMAT": app.state.config.TTS_AZURE_SPEECH_OUTPUT_FORMAT,
+            "AUDIO_SPEECH_PREVIEW_BASE_URL": app.state.config.AUDIO_SPEECH_PREVIEW_BASE_URL,
+            "AUDIO_SPEECH_PREVIEW_API_KEYS": app.state.config.AUDIO_SPEECH_PREVIEW_API_KEYS,
         },
         "stt": {
             "OPENAI_API_BASE_URL": app.state.config.STT_OPENAI_API_BASE_URL,
@@ -353,6 +366,30 @@ async def speech(request: Request, user=Depends(get_verified_user)):
                 status_code=500, detail=f"Error synthesizing speech - {response.reason}"
             )
 
+@app.post("/speech/preview")
+async def get_speech_preview(request: Request, user=Depends(get_verified_user)):
+    body = await request.json()
+    if user.role not in ["vip", "svip", "admin"]:
+        return {"error": "You are not authorized to use this endpoint."}
+    
+    speech_api_keys = [key.strip() for key in app.state.config.AUDIO_SPEECH_PREVIEW_API_KEYS.split(",") if key.strip()]
+    headers = {
+        "Authorization": f"Bearer {random.choice(speech_api_keys)}",
+        "Content-Type": "application/json",
+    }
+
+    try:
+        r = requests.post(
+            url=f"{app.state.config.AUDIO_SPEECH_PREVIEW_BASE_URL}/backend-api/voice_token",
+            headers=headers,
+            json=body,
+        )
+        r.raise_for_status()
+        data = r.json()
+        return data
+    except Exception as e:
+        log.exception(e)
+        return {"error": "Error connecting to the speech preview service"}
 
 @app.post("/transcriptions")
 def transcribe(

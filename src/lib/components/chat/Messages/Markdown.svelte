@@ -2,7 +2,6 @@
 	import { marked } from 'marked';
 	import { replaceTokens, processResponseContent } from '$lib/utils';
 	import { user } from '$lib/stores';
-	import 'katex/dist/katex.min.css';
 	import { throttle } from 'lodash';
 
 	import markedKatexExtension from '$lib/utils/marked/katex-extension';
@@ -26,32 +25,20 @@
 
 	marked.use(markedKatexExtension(options));
 
-	const throttledBufferTime = Number(bufferTime) || 50;
-
-	let previousProcessedContent = '';
-	let previousMessageContent = '';
-	let processedContent = '';
+	const throttledBufferTime = Number(bufferTime) || 30;
 
 	const processContentThrottled = throttle(() => {
-		if (content) {
-			if (Math.abs(content.length - previousProcessedContent.length) > 20) {
-				processedContent = replaceTokens(processResponseContent(content), model?.name, $user?.name);
-				previousProcessedContent = content;
-			} else {
-				processedContent += content.slice(previousMessageContent.length);
-			}
-			previousMessageContent = content;
-			tokens = marked.lexer(processedContent);
-		}
+		tokens = marked.lexer(replaceTokens(processResponseContent(content), model?.name, $user?.name));
 	}, throttledBufferTime);
 
 	$: (async () => {
 		if (content) {
+			processContentThrottled();
+		} else {
+			// 当消息为空或者消息收到Done返回"" 的时候，直接显示
 			tokens = marked.lexer(
 				replaceTokens(processResponseContent(content), model?.name, $user?.name)
 			);
-		} else {
-			processContentThrottled();
 		}
 	})();
 </script>

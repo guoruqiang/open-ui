@@ -16,6 +16,10 @@ from typing import Optional
 import aiohttp
 import requests
 
+#add for Cache Models
+import asyncio
+from cachetools import TTLCache
+
 from open_webui.apps.audio.main import app as audio_app
 from open_webui.apps.filter.main import app as filter_app
 from open_webui.apps.filter.main import filter_message, app_start
@@ -73,7 +77,7 @@ from open_webui.config import (
     WEBHOOK_URL,
     WEBUI_AUTH,
     AppConfig,
-    run_migrations, BACKGROUND_RANDOM_IMAGE_URL, MODEL_STATUS, INSTRUCTIONS_URL, LOBECHAT_URL, MIDJOURNEY_URL, TURNSTILE_SIGNUP_CHECK, TURNSTILE_LOGIN_CHECK,
+    run_migrations, BACKGROUND_RANDOM_IMAGE_URL, MODEL_STATUS, SPEECH_PREVIEW, INSTRUCTIONS_URL, LOBECHAT_URL, MIDJOURNEY_URL, TURNSTILE_SIGNUP_CHECK, TURNSTILE_LOGIN_CHECK,
     TURNSTILE_SITE_KEY,
     OPENAI_API_NOSTREAM_MODELS,
 )
@@ -871,9 +875,16 @@ app.mount("/api/v1", webui_app)
 
 webui_app.state.EMBEDDING_FUNCTION = rag_app.state.EMBEDDING_FUNCTION
 
+# create TTLCache，exprite in 0.5 min
+cache = TTLCache(maxsize=1, ttl=30)
+cache_lock = asyncio.Lock()
 
 async def get_all_models():
     # TODO: Optimize this function
+    # Check Cache
+    async with cache_lock:
+        if 'models' in cache:
+            return cache['models']
     pipe_models = []
     openai_models = []
     ollama_models = []
@@ -1015,7 +1026,9 @@ async def get_all_models():
 
     app.state.MODELS = {model["id"]: model for model in models}
     webui_app.state.MODELS = app.state.MODELS
-
+    # save models to  Cache
+    async with cache_lock:
+        cache['models'] = models
     return models
 
 
@@ -1080,7 +1093,7 @@ async def generate_chat_completions(form_data: dict, user=Depends(get_verified_u
             return convert_response_ollama_to_openai(response)
     else:
         try:
-            await filter_message(form_data, user, model)
+            await filter_message(form_data, user)
             return await generate_openai_chat_completion(form_data, user=user)
         except Exception as e:
             raise HTTPException(status_code=503, detail=str(e))
@@ -1488,20 +1501,20 @@ Prompt: {{prompt:middletruncate:8000}}"""
     if model_id in OPENAI_API_NOSTREAM_MODELS:
         log.info(f"Model {model_id} needs token argument patching in generate_title")
         # patch max_tokens -> max_completion_tokens and stream if 🍓
-        token_args = {"max_completion_tokens": 50}
+        token_args = {"max_completion_tokens": 20}
     else:
         log.info(f"Model {model_id} does not need token argument patching in generate_title")
-        token_args = {"max_tokens": 50}
+        token_args = {"max_tokens": 20}
 
     payload = {
         "model": task_model_id,
         "messages": [{"role": "user", "content": content}],
         "stream": False,
         **(
-            {"max_tokens": 50}
+            {"max_tokens": 20}
             if app.state.MODELS[task_model_id]["owned_by"] == "ollama"
             else {
-                "max_completion_tokens": 50,
+                "max_completion_tokens": 20,
             }
         ),
         "chat_id": form_data.get("chat_id", None),
@@ -2082,6 +2095,7 @@ async def get_app_config(request: Request):
     return {
         "status": True,
         "name": WEBUI_NAME,
+        "speech_preview": SPEECH_PREVIEW,
         "model_status": MODEL_STATUS,
         "instructions_url": INSTRUCTIONS_URL,
         "lobeChat_url": LOBECHAT_URL,

@@ -174,10 +174,30 @@
 					message.statusHistory = [data];
 				}
 			} else if (type === 'citation') {
-				if (message?.citations) {
-					message.citations.push(data);
+				if (data?.type === 'code_execution') {
+					// Code execution; update existing code execution by ID, or add new one.
+					if (!message?.code_executions) {
+						message.code_executions = [];
+					}
+
+					const existingCodeExecutionIndex = message.code_executions.findIndex(
+						(execution) => execution.id === data.id
+					);
+
+					if (existingCodeExecutionIndex !== -1) {
+						message.code_executions[existingCodeExecutionIndex] = data;
+					} else {
+						message.code_executions.push(data);
+					}
+
+					message.code_executions = message.code_executions;
 				} else {
-					message.citations = [data];
+					// Regular citation.
+					if (message?.citations) {
+						message.citations.push(data);
+					} else {
+						message.citations = [data];
+					}
 				}
 			} else if (type === 'message') {
 				message.content += data.content;
@@ -523,8 +543,8 @@
 	};
 
 	const chatActionHandler = async (chatId, actionId, modelId, responseMessageId, event = null) => {
+		responseMessageId = event?.data?.messageId || responseMessageId;
 		const messages = createMessagesList(responseMessageId);
-		const messageId = event?.data?.messageId;
 		const res = await chatAction(localStorage.token, actionId, {
 			model: modelId,
 			messages: messages.map((m) => ({
@@ -537,7 +557,7 @@
 			...(event ? { event: event } : {}),
 			chat_id: chatId,
 			session_id: $socket?.id,
-			id: messageId || responseMessageId
+			id: responseMessageId
 		}).catch((error) => {
 			toast.error(error);
 			messages.at(-1).error = { content: error };
@@ -656,7 +676,10 @@
 			$models.map((m) => m.id).includes(modelId) ? modelId : ''
 		);
 
-		if (selectedModels.includes('')) {
+		if (userPrompt === '') {
+			toast.error($i18n.t('Please enter a prompt'));
+			return;
+		} else if (selectedModels.includes('')) {
 			toast.error($i18n.t('Model not selected'));
 		} else if (messages.length != 0 && messages.at(-1).done != true) {
 			// Response not done
@@ -687,6 +710,9 @@
 			);
 		} else {
 			// Reset chat input textarea
+			prompt = '';
+			await tick();
+
 			const chatTextAreaElement = document.getElementById('chat-textarea');
 
 			if (chatTextAreaElement) {
@@ -709,7 +735,6 @@
 			);
 
 			files = [];
-			prompt = '';
 
 			// Create user message
 			let userMessageId = uuidv4();
@@ -732,6 +757,9 @@
 			if (messages.length !== 0) {
 				history.messages[messages.at(-1).id].childrenIds.push(userMessageId);
 			}
+
+			// Clear prompt
+			prompt = '';
 
 			// Wait until history/message have been updated
 			await tick();
@@ -2069,7 +2097,6 @@
 								{createMessagePair}
 								on:submit={async (e) => {
 									if (e.detail) {
-										prompt = '';
 										await tick();
 										submitPrompt(e.detail);
 									}
@@ -2104,7 +2131,6 @@
 							{createMessagePair}
 							on:submit={async (e) => {
 								if (e.detail) {
-									prompt = '';
 									await tick();
 									submitPrompt(e.detail);
 								}

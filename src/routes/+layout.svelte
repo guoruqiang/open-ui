@@ -1,10 +1,5 @@
 <script>
 	import { io } from 'socket.io-client';
-	import { spring } from 'svelte/motion';
-
-	let loadingProgress = spring(0, {
-		stiffness: 0.05
-	});
 
 	import { onMount, tick, setContext } from 'svelte';
 	import {
@@ -87,110 +82,73 @@
 	onMount(async () => {
 		theme.set(localStorage.theme);
 
-		mobile.set(window.innerWidth < BREAKPOINT);
-		const onResize = () => {
-			if (window.innerWidth < BREAKPOINT) {
-				mobile.set(true);
-			} else {
-				mobile.set(false);
-			}
-		};
+		const updateMobileFlag = () => mobile.set(window.innerWidth < BREAKPOINT);
+		updateMobileFlag();
+		window.addEventListener('resize', updateMobileFlag);
 
-		window.addEventListener('resize', onResize);
-
-		let backendConfig = null;
 		try {
-			backendConfig = await getBackendConfig();
+			const backendConfig = await getBackendConfig();
 			console.log('Backend config:', backendConfig);
-		} catch (error) {
-			console.error('Error loading backend config:', error);
-		}
-		// Initialize i18n even if we didn't get a backend config,
-		// so `/error` can show something that's not `undefined`.
 
-		initI18n();
-		if (!localStorage.locale) {
-			const languages = await getLanguages();
-			const browserLanguages = navigator.languages
-				? navigator.languages
-				: [navigator.language || navigator.userLanguage];
-			const lang = backendConfig.default_locale
-				? backendConfig.default_locale
-				: bestMatchingLanguage(languages, browserLanguages, 'en-US');
-			$i18n.changeLanguage(lang);
-		}
+			initI18n();
 
-		if (backendConfig) {
-			// Save Backend Status to Store
-			await config.set(backendConfig);
-			await WEBUI_NAME.set(backendConfig.name);
+			if (!localStorage.locale) {
+				const languages = await getLanguages();
+				const browserLanguages = navigator.languages || [
+					navigator.language || navigator.userLanguage
+				];
+				const lang =
+					backendConfig?.default_locale ||
+					bestMatchingLanguage(languages, browserLanguages, 'zh-CN');
+				$i18n.changeLanguage(lang);
+			}
+
+			// 保存后台配置到 store，并设置 WEBUI_NAME，使用默认值防止 null 错误
+			await Promise.all([
+				config.set(backendConfig),
+				WEBUI_NAME.set(backendConfig?.name || 'Yubb Chat')
+			]);
 
 			if ($config) {
 				setupSocket();
 
 				if (localStorage.token) {
-					// Get Session User Info
-					const sessionUser = await getSessionUser(localStorage.token).catch((error) => {
-						toast.error(error);
-						return null;
-					});
-
-					if (sessionUser) {
-						// Save Session User to Store
-						await user.set(sessionUser);
-						await config.set(await getBackendConfig());
-					} else {
-						// Redirect Invalid Session User to /auth Page
+					try {
+						const sessionUser = await getSessionUser(localStorage.token);
+						if (sessionUser) {
+							await Promise.all([
+								user.set(sessionUser),
+								config.set(await getBackendConfig()),
+								WEBUI_NAME.set(backendConfig?.name || 'Yubb Chat')
+							]);
+						} else {
+							throw new Error('Invalid session user');
+						}
+					} catch (error) {
+						console.error('Error fetching session user:', error);
 						localStorage.removeItem('token');
 						await goto('/auth');
 					}
-				} else {
-					// Don't redirect if we're already on the auth page
-					// Needed because we pass in tokens from OAuth logins via URL fragments
-					if ($page.url.pathname !== '/auth') {
-						await goto('/auth');
-					}
+				} else if ($page.url.pathname !== '/auth') {
+					await goto('/auth');
 				}
 			}
-		} else {
-			// Redirect to /error when Backend Not Detected
-			await goto(`/error`);
+		} catch (error) {
+			console.error('Error loading backend config or initializing:', error);
+			await goto('/error');
 		}
 
 		await tick();
 
-		if (
-			document.documentElement.classList.contains('her') &&
-			document.getElementById('progress-bar')
-		) {
-			loadingProgress.subscribe((value) => {
-				const progressBar = document.getElementById('progress-bar');
+		// 移除启动画面
+		document.getElementById('splash-screen')?.remove();
 
-				if (progressBar) {
-					progressBar.style.width = `${value}%`;
-				}
-			});
+		// 设置加载完成标志
+		loaded = true;
 
-			await loadingProgress.set(100);
-
-			document.getElementById('splash-screen')?.remove();
-
-			const audio = new Audio(`/audio/greeting.mp3`);
-			const playAudio = () => {
-				audio.play();
-				document.removeEventListener('click', playAudio);
-			};
-
-			document.addEventListener('click', playAudio);
-
-			loaded = true;
-		} else {
-			document.getElementById('splash-screen')?.remove();
-			loaded = true;
-		}
-
+		// 清理函数，移除事件监听器
 		return () => {
-			window.removeEventListener('resize', onResize);
+			window.removeEventListener('resize', updateMobileFlag);
 		};
 	});
 </script>
@@ -201,8 +159,8 @@
 
 	<!-- rosepine themes have been disabled as it's not up to date with our latest version. -->
 	<!-- feel free to make a PR to fix if anyone wants to see it return -->
-	<link rel="stylesheet" type="text/css" href="/themes/rosepine.css" />
-	<link rel="stylesheet" type="text/css" href="/themes/rosepine-dawn.css" />
+	<!-- <link rel="stylesheet" type="text/css" href="/themes/rosepine.css" />
+	<link rel="stylesheet" type="text/css" href="/themes/rosepine-dawn.css" /> -->
 </svelte:head>
 
 {#if loaded}
