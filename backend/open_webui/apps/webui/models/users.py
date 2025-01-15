@@ -103,7 +103,6 @@ class UsersTable:
     ) -> Optional[UserModel]:
         with get_db() as db:
             init_settings = UserSettings()
-            init_settings.ui["backgroundImageUrl"] = backgroundImageUrl
             current_time = datetime.now()
             print(f"{expire_duration} {expire_unit}")
 
