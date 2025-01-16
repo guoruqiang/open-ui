@@ -19,6 +19,9 @@ export const activeUserCount: Writable<null | number> = writable(null);
 export const USAGE_POOL: Writable<null | string[]> = writable(null);
 
 export const theme = writable('system');
+
+// Chat Type 暂定为Chat,Image,Video,PPT
+export const chatType = writable('chat');
 export const chatId = writable('');
 export const chatTitle = writable('');
 
@@ -167,7 +170,7 @@ type Document = {
 type File = {
 	max_size: number;
 	max_count: number;
-}
+};
 
 type Config = {
 	status: boolean;
@@ -175,6 +178,7 @@ type Config = {
 	version: string;
 	file: File;
 	model_status: string;
+	recharge_url: string;
 	speech_preview: boolean;
 	instructions_url: string;
 	lobeChat_url: string;
@@ -197,6 +201,12 @@ type Config = {
 		enable_admin_chat_access: boolean;
 		enable_community_sharing: boolean;
 	};
+	chatTypes: {
+		enable_create_ppt: boolean;
+		enable_create_image: boolean;
+		enable_create_video: boolean;
+		enable_create_search: boolean;
+	};
 	oauth: {
 		providers: {
 			[key: string]: string;
@@ -215,4 +225,6 @@ type SessionUser = {
 	name: string;
 	role: string;
 	profile_image_url: string;
+	expire_at: number;
+	created_at: number;
 };

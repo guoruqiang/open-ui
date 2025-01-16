@@ -16,8 +16,10 @@ from typing import Optional
 import aiohttp
 import requests
 
-#add for Cache Models
+# add for Cache Models
 import asyncio
+
+import uvicorn
 from cachetools import TTLCache
 
 from open_webui.apps.audio.main import app as audio_app
@@ -32,7 +34,9 @@ from open_webui.apps.ollama.main import (
 )
 from open_webui.apps.ollama.main import get_all_models as get_ollama_models
 from open_webui.apps.openai.main import app as openai_app
-from open_webui.apps.openai.main import generate_chat_completion as generate_openai_chat_completion
+from open_webui.apps.openai.main import (
+    generate_chat_completion as generate_openai_chat_completion,
+)
 from open_webui.apps.openai.main import get_all_models as get_openai_models
 from open_webui.apps.rag.main import app as rag_app
 from open_webui.apps.rag.utils import get_rag_context, rag_template
@@ -40,11 +44,18 @@ from open_webui.apps.socket.main import app as socket_app, periodic_usage_pool_c
 from open_webui.apps.socket.main import get_event_call, get_event_emitter
 from open_webui.apps.webui.internal.db import Session
 from open_webui.apps.webui.main import app as webui_app
-from open_webui.apps.webui.main import generate_function_chat_completion, get_pipe_models
+from open_webui.apps.webui.main import (
+    generate_function_chat_completion,
+    get_pipe_models,
+)
 from open_webui.apps.webui.models.auths import Auths
 from open_webui.apps.webui.models.functions import Functions
 from open_webui.apps.webui.models.models import Models
-from open_webui.apps.webui.models.users import UserModel, Users, change_init_background_random_image_url
+from open_webui.apps.webui.models.users import (
+    UserModel,
+    Users,
+    change_init_background_random_image_url,
+)
 from open_webui.apps.webui.routers.users import change_background_random_image_url
 from open_webui.apps.webui.utils import load_function_module_by_id
 
@@ -77,7 +88,16 @@ from open_webui.config import (
     WEBHOOK_URL,
     WEBUI_AUTH,
     AppConfig,
-    run_migrations, BACKGROUND_RANDOM_IMAGE_URL, MODEL_STATUS, SPEECH_PREVIEW, INSTRUCTIONS_URL, LOBECHAT_URL, MIDJOURNEY_URL, TURNSTILE_SIGNUP_CHECK, TURNSTILE_LOGIN_CHECK,
+    ADMIN_URL,
+    run_migrations,
+    BACKGROUND_RANDOM_IMAGE_URL,
+    MODEL_STATUS,
+    SPEECH_PREVIEW,
+    INSTRUCTIONS_URL,
+    LOBECHAT_URL,
+    MIDJOURNEY_URL,
+    TURNSTILE_SIGNUP_CHECK,
+    TURNSTILE_LOGIN_CHECK,
     TURNSTILE_SITE_KEY,
     OPENAI_API_NOSTREAM_MODELS,
 )
@@ -204,6 +224,11 @@ app.state.config.ENABLE_MODEL_FILTER = ENABLE_MODEL_FILTER
 app.state.config.MODEL_FILTER_LIST = MODEL_FILTER_LIST
 
 app.state.config.WEBHOOK_URL = WEBHOOK_URL
+app.state.config.ADMIN_URL = ADMIN_URL
+
+app.state.config.TURNSTILE_SIGNUP_CHECK = TURNSTILE_SIGNUP_CHECK
+app.state.config.TURNSTILE_LOGIN_CHECK = TURNSTILE_LOGIN_CHECK
+app.state.config.TURNSTILE_SITE_KEY = TURNSTILE_SITE_KEY
 
 app.state.config.TASK_MODEL = TASK_MODEL
 app.state.config.TASK_MODEL_EXTERNAL = TASK_MODEL_EXTERNAL
@@ -221,7 +246,6 @@ change_background_random_image_url(app.state.config.BACKGROUND_RANDOM_IMAGE_URL)
 change_init_background_random_image_url(app.state.config.BACKGROUND_RANDOM_IMAGE_URL)
 app.state.MODELS = {}
 
-
 ##################################
 #
 # ChatCompletion Middleware
@@ -235,14 +259,14 @@ def get_task_model_id(default_model_id):
     # Check if the user has a custom task model and use that model
     if app.state.MODELS[task_model_id]["owned_by"] == "ollama":
         if (
-                app.state.config.TASK_MODEL
-                and app.state.config.TASK_MODEL in app.state.MODELS
+            app.state.config.TASK_MODEL
+            and app.state.config.TASK_MODEL in app.state.MODELS
         ):
             task_model_id = app.state.config.TASK_MODEL
     else:
         if (
-                app.state.config.TASK_MODEL_EXTERNAL
-                and app.state.config.TASK_MODEL_EXTERNAL in app.state.MODELS
+            app.state.config.TASK_MODEL_EXTERNAL
+            and app.state.config.TASK_MODEL_EXTERNAL in app.state.MODELS
         ):
             task_model_id = app.state.config.TASK_MODEL_EXTERNAL
 
@@ -379,7 +403,7 @@ async def get_content_from_response(response) -> Optional[str]:
 
 
 async def chat_completion_tools_handler(
-        body: dict, user: UserModel, extra_params: dict
+    body: dict, user: UserModel, extra_params: dict
 ) -> tuple[dict, dict]:
     # If tool_ids field is present, call the functions
     metadata = body.get("metadata", {})
@@ -550,7 +574,9 @@ class ChatCompletionMiddleware(BaseHTTPMiddleware):
         body["metadata"] = metadata
 
         try:
-            setting_enableFileUpdateBase64 = user.settings.ui.get("enableFileUpdateBase64", False)
+            setting_enableFileUpdateBase64 = user.settings.ui.get(
+                "enableFileUpdateBase64", False
+            )
         except AttributeError:
             setting_enableFileUpdateBase64 = False
 
@@ -562,7 +588,8 @@ class ChatCompletionMiddleware(BaseHTTPMiddleware):
                 "email": user.email,
                 "name": user.name,
                 "role": user.role,
-                "enableFileUpdateBase64": setting_enableFileUpdateBase64 and rag_app.state.config.ENABLE_BASE64,
+                "enableFileUpdateBase64": setting_enableFileUpdateBase64
+                and rag_app.state.config.ENABLE_BASE64,
             },
         }
 
@@ -692,15 +719,15 @@ def get_sorted_filters(model_id):
         model
         for model in app.state.MODELS.values()
         if "pipeline" in model
-           and "type" in model["pipeline"]
-           and model["pipeline"]["type"] == "filter"
-           and (
-                   model["pipeline"]["pipelines"] == ["*"]
-                   or any(
-               model_id == target_model_id
-               for target_model_id in model["pipeline"]["pipelines"]
-           )
-           )
+        and "type" in model["pipeline"]
+        and model["pipeline"]["type"] == "filter"
+        and (
+            model["pipeline"]["pipelines"] == ["*"]
+            or any(
+                model_id == target_model_id
+                for target_model_id in model["pipeline"]["pipelines"]
+            )
+        )
     ]
     sorted_filters = sorted(filters, key=lambda x: x["pipeline"]["priority"])
     return sorted_filters
@@ -879,12 +906,13 @@ webui_app.state.EMBEDDING_FUNCTION = rag_app.state.EMBEDDING_FUNCTION
 cache = TTLCache(maxsize=1, ttl=30)
 cache_lock = asyncio.Lock()
 
+
 async def get_all_models():
     # TODO: Optimize this function
     # Check Cache
     async with cache_lock:
-        if 'models' in cache:
-            return cache['models']
+        if "models" in cache:
+            return cache["models"]
     pipe_models = []
     openai_models = []
     ollama_models = []
@@ -924,8 +952,8 @@ async def get_all_models():
         if custom_model.base_model_id is None:
             for model in models:
                 if (
-                        custom_model.id == model["id"]
-                        or custom_model.id == model["id"].split(":")[0]
+                    custom_model.id == model["id"]
+                    or custom_model.id == model["id"].split(":")[0]
                 ):
                     model["name"] = custom_model.name
                     model["info"] = custom_model.model_dump()
@@ -942,8 +970,8 @@ async def get_all_models():
 
             for model in models:
                 if (
-                        custom_model.base_model_id == model["id"]
-                        or custom_model.base_model_id == model["id"].split(":")[0]
+                    custom_model.base_model_id == model["id"]
+                    or custom_model.base_model_id == model["id"].split(":")[0]
                 ):
                     owned_by = model["owned_by"]
                     if "pipe" in model:
@@ -1028,7 +1056,7 @@ async def get_all_models():
     webui_app.state.MODELS = app.state.MODELS
     # save models to  Cache
     async with cache_lock:
-        cache['models'] = models
+        cache["models"] = models
     return models
 
 
@@ -1041,7 +1069,7 @@ async def get_models(user=Depends(get_verified_user)):
         model
         for model in models
         if ("pipeline" not in model or model["pipeline"].get("type", None) != "filter")
-           and not model.get("name", "").startswith("mj_")
+        and not model.get("name", "").startswith("mj_")
     ]
 
     if app.state.config.ENABLE_MODEL_FILTER:
@@ -1068,7 +1096,10 @@ async def generate_chat_completions(form_data: dict, user=Depends(get_verified_u
         )
 
     if app.state.config.ENABLE_MODEL_FILTER:
-        if str(user.role) not in ["admin", "vip", "svip"] and model_id not in app.state.config.MODEL_FILTER_LIST:
+        if (
+            str(user.role) not in ["admin", "vip", "svip"]
+            and model_id not in app.state.config.MODEL_FILTER_LIST
+        ):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Model not found",
@@ -1237,7 +1268,9 @@ async def chat_completed(form_data: dict, user=Depends(get_verified_user)):
                     params[key] = value
 
             try:
-                setting_enableFileUpdateBase64 = user.settings.ui.get("enableFileUpdateBase64", False)
+                setting_enableFileUpdateBase64 = user.settings.ui.get(
+                    "enableFileUpdateBase64", False
+                )
             except AttributeError:
                 setting_enableFileUpdateBase64 = False
 
@@ -1247,7 +1280,8 @@ async def chat_completed(form_data: dict, user=Depends(get_verified_user)):
                     "email": user.email,
                     "name": user.name,
                     "role": user.role,
-                    "enableFileUpdateBase64": setting_enableFileUpdateBase64 and rag_app.state.config.ENABLE_BASE64,
+                    "enableFileUpdateBase64": setting_enableFileUpdateBase64
+                    and rag_app.state.config.ENABLE_BASE64,
                 }
 
                 try:
@@ -1347,7 +1381,9 @@ async def chat_action(action_id: str, form_data: dict, user=Depends(get_verified
                     params[key] = value
 
             try:
-                setting_enableFileUpdateBase64 = user.settings.ui.get("enableFileUpdateBase64", False)
+                setting_enableFileUpdateBase64 = user.settings.ui.get(
+                    "enableFileUpdateBase64", False
+                )
             except AttributeError:
                 setting_enableFileUpdateBase64 = False
 
@@ -1357,7 +1393,8 @@ async def chat_action(action_id: str, form_data: dict, user=Depends(get_verified
                     "email": user.email,
                     "name": user.name,
                     "role": user.role,
-                    "enableFileUpdateBase64": setting_enableFileUpdateBase64 and rag_app.state.config.ENABLE_BASE64,
+                    "enableFileUpdateBase64": setting_enableFileUpdateBase64
+                    and rag_app.state.config.ENABLE_BASE64,
                 }
 
                 try:
@@ -1435,10 +1472,17 @@ async def update_task_config(form_data: TaskConfigForm, user=Depends(get_admin_u
         form_data.TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE
     )
 
-    if form_data.BACKGROUND_RANDOM_IMAGE_URL != app.state.config.BACKGROUND_RANDOM_IMAGE_URL:
-        app.state.config.BACKGROUND_RANDOM_IMAGE_URL = form_data.BACKGROUND_RANDOM_IMAGE_URL
+    if (
+        form_data.BACKGROUND_RANDOM_IMAGE_URL
+        != app.state.config.BACKGROUND_RANDOM_IMAGE_URL
+    ):
+        app.state.config.BACKGROUND_RANDOM_IMAGE_URL = (
+            form_data.BACKGROUND_RANDOM_IMAGE_URL
+        )
         change_background_random_image_url(app.state.config.BACKGROUND_RANDOM_IMAGE_URL)
-        change_init_background_random_image_url(app.state.config.BACKGROUND_RANDOM_IMAGE_URL)
+        change_init_background_random_image_url(
+            app.state.config.BACKGROUND_RANDOM_IMAGE_URL
+        )
 
     return {
         "TASK_MODEL": app.state.config.TASK_MODEL,
@@ -1503,7 +1547,9 @@ Prompt: {{prompt:middletruncate:8000}}"""
         # patch max_tokens -> max_completion_tokens and stream if 🍓
         token_args = {"max_completion_tokens": 20}
     else:
-        log.info(f"Model {model_id} does not need token argument patching in generate_title")
+        log.info(
+            f"Model {model_id} does not need token argument patching in generate_title"
+        )
         token_args = {"max_tokens": 20}
 
     payload = {
@@ -1519,7 +1565,7 @@ Prompt: {{prompt:middletruncate:8000}}"""
         ),
         "chat_id": form_data.get("chat_id", None),
         "metadata": {"task": str(TASKS.TITLE_GENERATION)},
-        **token_args
+        **token_args,
     }
     log.debug(payload)
 
@@ -1783,7 +1829,7 @@ async def get_pipelines_list(user=Depends(get_admin_user)):
 
 @app.post("/api/pipelines/upload")
 async def upload_pipeline(
-        urlIdx: int = Form(...), file: UploadFile = File(...), user=Depends(get_admin_user)
+    urlIdx: int = Form(...), file: UploadFile = File(...), user=Depends(get_admin_user)
 ):
     print("upload_pipeline", urlIdx, file.filename)
     # Check if the uploaded file is a python file
@@ -1960,9 +2006,9 @@ async def get_pipelines(urlIdx: Optional[int] = None, user=Depends(get_admin_use
 
 @app.get("/api/pipelines/{pipeline_id}/valves")
 async def get_pipeline_valves(
-        urlIdx: Optional[int],
-        pipeline_id: str,
-        user=Depends(get_admin_user),
+    urlIdx: Optional[int],
+    pipeline_id: str,
+    user=Depends(get_admin_user),
 ):
     r = None
     try:
@@ -1998,9 +2044,9 @@ async def get_pipeline_valves(
 
 @app.get("/api/pipelines/{pipeline_id}/valves/spec")
 async def get_pipeline_valves_spec(
-        urlIdx: Optional[int],
-        pipeline_id: str,
-        user=Depends(get_admin_user),
+    urlIdx: Optional[int],
+    pipeline_id: str,
+    user=Depends(get_admin_user),
 ):
     r = None
     try:
@@ -2035,10 +2081,10 @@ async def get_pipeline_valves_spec(
 
 @app.post("/api/pipelines/{pipeline_id}/valves/update")
 async def update_pipeline_valves(
-        urlIdx: Optional[int],
-        pipeline_id: str,
-        form_data: dict,
-        user=Depends(get_admin_user),
+    urlIdx: Optional[int],
+    pipeline_id: str,
+    form_data: dict,
+    user=Depends(get_admin_user),
 ):
     r = None
     try:
@@ -2100,10 +2146,11 @@ async def get_app_config(request: Request):
         "instructions_url": INSTRUCTIONS_URL,
         "lobeChat_url": LOBECHAT_URL,
         "midjourney_url": MIDJOURNEY_URL,
+        "recharge_url": app.state.config.ADMIN_URL,
         "random_image_url": app.state.config.BACKGROUND_RANDOM_IMAGE_URL,
-        "turnstile_login_check": TURNSTILE_LOGIN_CHECK,
-        "turnstile_signup_check": TURNSTILE_SIGNUP_CHECK,
-        "turnstile_site_key": TURNSTILE_SITE_KEY,
+        "turnstile_login_check": app.state.config.TURNSTILE_LOGIN_CHECK,
+        "turnstile_signup_check": app.state.config.TURNSTILE_SIGNUP_CHECK,
+        "turnstile_site_key": app.state.config.TURNSTILE_SITE_KEY,
         "version": VERSION,
         "default_locale": str(DEFAULT_LOCALE),
         "oauth": {
@@ -2129,6 +2176,12 @@ async def get_app_config(request: Request):
                 if user is not None
                 else {}
             ),
+        },
+        "chatTypes": {
+            "enable_create_image": webui_app.state.config.UI_ENABLE_CREATE_IMAGE,
+            "enable_create_video": webui_app.state.config.UI_ENABLE_CREATE_VIDEO,
+            "enable_create_ppt": webui_app.state.config.UI_ENABLE_CREATE_PPT,
+            "enable_create_search": webui_app.state.config.UI_ENABLE_CREATE_SEARCH,
         },
         **(
             {
@@ -2171,7 +2224,7 @@ class ModelFilterConfigForm(BaseModel):
 
 @app.post("/api/config/model/filter")
 async def update_model_filter_config(
-        form_data: ModelFilterConfigForm, user=Depends(get_admin_user)
+    form_data: ModelFilterConfigForm, user=Depends(get_admin_user)
 ):
     app.state.config.ENABLE_MODEL_FILTER = form_data.enabled
     app.state.config.MODEL_FILTER_LIST = form_data.models
@@ -2220,7 +2273,7 @@ async def get_app_latest_release_version():
     try:
         async with aiohttp.ClientSession(trust_env=True) as session:
             async with session.get(
-                    "https://api.github.com/yubb-ai/open-ui/releases/latest"
+                "https://api.github.com/yubb-ai/open-ui/releases/latest"
             ) as response:
                 response.raise_for_status()
                 data = await response.json()
@@ -2354,6 +2407,8 @@ async def oauth_callback(provider: str, request: Request, response: Response):
                 if Users.get_num_users() == 0
                 else webui_app.state.config.DEFAULT_USER_ROLE
             )
+            expire_duration = webui_app.state.config.DEFAULT_USER_EXPIRE_DURATION
+            expire_unit = webui_app.state.config.DEFAULT_USER_EXPIRE_UNIT
             user = Auths.insert_new_auth(
                 email=email,
                 password=get_password_hash(
@@ -2362,6 +2417,8 @@ async def oauth_callback(provider: str, request: Request, response: Response):
                 name=user_data.get(username_claim, "User"),
                 profile_image_url=picture_url,
                 role=role,
+                expire_duration=expire_duration,
+                expire_unit=expire_unit,
                 oauth_sub=provider_sub,
             )
 

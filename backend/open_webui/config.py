@@ -400,9 +400,9 @@ def load_oauth_providers():
         }
 
     if (
-            MICROSOFT_CLIENT_ID.value
-            and MICROSOFT_CLIENT_SECRET.value
-            and MICROSOFT_CLIENT_TENANT_ID.value
+        MICROSOFT_CLIENT_ID.value
+        and MICROSOFT_CLIENT_SECRET.value
+        and MICROSOFT_CLIENT_TENANT_ID.value
     ):
         OAUTH_PROVIDERS["microsoft"] = {
             "client_id": MICROSOFT_CLIENT_ID.value,
@@ -413,9 +413,9 @@ def load_oauth_providers():
         }
 
     if (
-            OAUTH_CLIENT_ID.value
-            and OAUTH_CLIENT_SECRET.value
-            and OPENID_PROVIDER_URL.value
+        OAUTH_CLIENT_ID.value
+        and OAUTH_CLIENT_SECRET.value
+        and OPENID_PROVIDER_URL.value
     ):
         OAUTH_PROVIDERS["oidc"] = {
             "client_id": OAUTH_CLIENT_ID.value,
@@ -499,7 +499,7 @@ CUSTOM_NAME = os.environ.get("CUSTOM_NAME", "")
 
 MODEL_STATUS = os.environ.get("MODEL_STATUS", "")
 
-SPEECH_PREVIEW = os.environ.get("SPEECH_PREVIEW", "true").lower() == "true",
+SPEECH_PREVIEW = (os.environ.get("SPEECH_PREVIEW", "true").lower() == "true",)
 
 INSTRUCTIONS_URL = os.environ.get("INSTRUCTIONS_URL", "")
 
@@ -571,7 +571,7 @@ Path(FUNCTIONS_DIR).mkdir(parents=True, exist_ok=True)
 ENABLE_OLLAMA_API = PersistentConfig(
     "ENABLE_OLLAMA_API",
     "ollama.enable",
-    os.environ.get("ENABLE_OLLAMA_API", "True").lower() == "true",
+    os.environ.get("ENABLE_OLLAMA_API", "False").lower() == "true",
 )
 
 OLLAMA_API_BASE_URL = os.environ.get(
@@ -744,16 +744,28 @@ DEFAULT_USER_ROLE = PersistentConfig(
     os.getenv("DEFAULT_USER_ROLE", "pending"),
 )
 
+DEFAULT_USER_EXPIRE_DURATION = PersistentConfig(
+    "DEFAULT_USER_EXPIRE_DURATION",
+    "ui.default_user_expire_duration",
+    os.getenv("DEFAULT_USER_EXPIRE_DURATION", 1),
+)
+
+DEFAULT_USER_EXPIRE_UNIT = PersistentConfig(
+    "DEFAULT_USER_EXPIRE_UNIT",
+    "ui.default_user_expire_unit",
+    os.getenv("DEFAULT_USER_EXPIRE_UNIT", "day"),
+)
+
 USER_PERMISSIONS_CHAT_DELETION = (
-        os.environ.get("USER_PERMISSIONS_CHAT_DELETION", "True").lower() == "true"
+    os.environ.get("USER_PERMISSIONS_CHAT_DELETION", "True").lower() == "true"
 )
 
 USER_PERMISSIONS_CHAT_EDITING = (
-        os.environ.get("USER_PERMISSIONS_CHAT_EDITING", "True").lower() == "true"
+    os.environ.get("USER_PERMISSIONS_CHAT_EDITING", "True").lower() == "true"
 )
 
 USER_PERMISSIONS_CHAT_TEMPORARY = (
-        os.environ.get("USER_PERMISSIONS_CHAT_TEMPORARY", "True").lower() == "true"
+    os.environ.get("USER_PERMISSIONS_CHAT_TEMPORARY", "True").lower() == "true"
 )
 
 USER_PERMISSIONS = PersistentConfig(
@@ -788,7 +800,7 @@ WEBHOOK_URL = PersistentConfig(
 ENABLE_ADMIN_EXPORT = os.environ.get("ENABLE_ADMIN_EXPORT", "True").lower() == "true"
 
 ENABLE_ADMIN_CHAT_ACCESS = (
-        os.environ.get("ENABLE_ADMIN_CHAT_ACCESS", "True").lower() == "true"
+    os.environ.get("ENABLE_ADMIN_CHAT_ACCESS", "True").lower() == "true"
 )
 
 ENABLE_COMMUNITY_SHARING = PersistentConfig(
@@ -827,9 +839,9 @@ def validate_cors_origin(origin):
 # For production, you should only need one host as
 # fastapi serves the svelte-kit built frontend and backend from the same host and port.
 # To test CORS_ALLOW_ORIGIN locally, you can set something like
-# CORS_ALLOW_ORIGIN=http://localhost:5173;http://localhost:8080
+CORS_ALLOW_ORIGIN = "http://localhost:5173;http://localhost:8080".split(";")
 # in your .env file depending on your frontend port, 5173 in this case.
-CORS_ALLOW_ORIGIN = os.environ.get("CORS_ALLOW_ORIGIN", "*").split(";")
+# CORS_ALLOW_ORIGIN = os.environ.get("CORS_ALLOW_ORIGIN", "*").split(";")
 
 if "*" in CORS_ALLOW_ORIGIN:
     log.warning(
@@ -867,6 +879,12 @@ ADMIN_EMAIL = PersistentConfig(
     "ADMIN_EMAIL",
     "auth.admin.email",
     os.environ.get("ADMIN_EMAIL", None),
+)
+
+ADMIN_URL = PersistentConfig(
+    "ADMIN_URL",
+    "auth.admin.url",
+    os.environ.get("ADMIN_URL", None),
 )
 
 ####################################
@@ -1026,11 +1044,11 @@ RAG_EMBEDDING_MODEL = PersistentConfig(
 log.info(f"Embedding model set: {RAG_EMBEDDING_MODEL.value}")
 
 RAG_EMBEDDING_MODEL_AUTO_UPDATE = (
-        os.environ.get("RAG_EMBEDDING_MODEL_AUTO_UPDATE", "").lower() == "true"
+    os.environ.get("RAG_EMBEDDING_MODEL_AUTO_UPDATE", "").lower() == "true"
 )
 
 RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE = (
-        os.environ.get("RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE", "").lower() == "true"
+    os.environ.get("RAG_EMBEDDING_MODEL_TRUST_REMOTE_CODE", "").lower() == "true"
 )
 
 RAG_EMBEDDING_OPENAI_BATCH_SIZE = PersistentConfig(
@@ -1048,11 +1066,11 @@ if RAG_RERANKING_MODEL.value != "":
     log.info(f"Reranking model set: {RAG_RERANKING_MODEL.value}")
 
 RAG_RERANKING_MODEL_AUTO_UPDATE = (
-        os.environ.get("RAG_RERANKING_MODEL_AUTO_UPDATE", "").lower() == "true"
+    os.environ.get("RAG_RERANKING_MODEL_AUTO_UPDATE", "").lower() == "true"
 )
 
 RAG_RERANKING_MODEL_TRUST_REMOTE_CODE = (
-        os.environ.get("RAG_RERANKING_MODEL_TRUST_REMOTE_CODE", "").lower() == "true"
+    os.environ.get("RAG_RERANKING_MODEL_TRUST_REMOTE_CODE", "").lower() == "true"
 )
 
 if CHROMA_HTTP_HOST != "":
@@ -1129,18 +1147,15 @@ RAG_OPENAI_API_KEY = PersistentConfig(
 
 SILICONFLOW_API_BASE_URL = os.environ.get(
     "SILICONFLOW_API_BASE_URL",
-    os.getenv("RAG_OPENAI_API_BASE_URL",
-              "https://api.siliconflow.cn/v1")
+    os.getenv("RAG_OPENAI_API_BASE_URL", "https://api.siliconflow.cn/v1"),
 )
 
 SILICONFLOW_API_KEY = os.environ.get(
-    "SILICONFLOW_API_KEY",
-    os.getenv("RAG_OPENAI_API_KEY",
-              OPENAI_API_KEY)
+    "SILICONFLOW_API_KEY", os.getenv("RAG_OPENAI_API_KEY", OPENAI_API_KEY)
 )
 
 ENABLE_RAG_LOCAL_WEB_FETCH = (
-        os.getenv("ENABLE_RAG_LOCAL_WEB_FETCH", "False").lower() == "true"
+    os.getenv("ENABLE_RAG_LOCAL_WEB_FETCH", "False").lower() == "true"
 )
 
 YOUTUBE_LOADER_LANGUAGE = PersistentConfig(
@@ -1258,7 +1273,7 @@ RAG_WEB_SEARCH_CONCURRENT_REQUESTS = PersistentConfig(
 WHISPER_MODEL = os.getenv("WHISPER_MODEL", "base")
 WHISPER_MODEL_DIR = os.getenv("WHISPER_MODEL_DIR", f"{CACHE_DIR}/whisper/models")
 WHISPER_MODEL_AUTO_UPDATE = (
-        os.environ.get("WHISPER_MODEL_AUTO_UPDATE", "").lower() == "true"
+    os.environ.get("WHISPER_MODEL_AUTO_UPDATE", "").lower() == "true"
 )
 
 ####################################
@@ -1637,12 +1652,95 @@ SEND_FILTER_MESSAGE_TYPE = PersistentConfig(
 # REGISTERED_EMAIL
 ####################################
 
-REGISTERED_EMAIL_SUFFIX = os.environ.get("REGISTERED_EMAIL_SUFFIX", "").lower()
+REGISTERED_EMAIL_SUFFIX = PersistentConfig(
+    "REGISTERED_EMAIL_SUFFIX",
+    "registered_email.suffix",
+    os.getenv("REGISTERED_EMAIL_SUFFIX", ""),
+)
 
-TURNSTILE_SIGNUP_CHECK = os.environ.get("TURNSTILE_SIGNUP_CHECK", "false").lower() == "true"
+TURNSTILE_SIGNUP_CHECK = PersistentConfig(
+    "TURNSTILE_SIGNUP_CHECK",
+    "registered_email.turnstile_signup_check",
+    os.environ.get("TURNSTILE_SIGNUP_CHECK", "false").lower() == "true",
+)
 
-TURNSTILE_LOGIN_CHECK = os.environ.get("TURNSTILE_LOGIN_CHECK", "false").lower() == "true"
+TURNSTILE_LOGIN_CHECK = PersistentConfig(
+    "TURNSTILE_LOGIN_CHECK",
+    "registered_email.turnstile_login_check",
+    os.environ.get("TURNSTILE_LOGIN_CHECK", "false").lower() == "true",
+)
 
-TURNSTILE_SITE_KEY = os.environ.get("TURNSTILE_SITE_KEY", "")
+TURNSTILE_SITE_KEY = PersistentConfig(
+    "TURNSTILE_SITE_KEY",
+    "registered_email.turnstile_site_key",
+    os.environ.get("TURNSTILE_SITE_KEY", ""),
+)
 
-TURNSTILE_SECRET_KEY = os.environ.get("TURNSTILE_SECRET_KEY", "")
+TURNSTILE_SECRET_KEY = PersistentConfig(
+    "TURNSTILE_SECRET_KEY",
+    "registered_email.turnstile_secret_key",
+    os.environ.get("TURNSTILE_SECRET_KEY", ""),
+)
+
+
+####################################
+# OSS 配置
+####################################
+
+OSS_ENABLE_STORAGE = PersistentConfig(
+    "OSS_ENABLE_STORAGE",
+    "oss.oss_enable_storage",
+    os.environ.get("OSS_ENABLE_STORAGE", "false").lower() == "true",
+)
+
+OSS_ACCESS_KEY = PersistentConfig(
+    "OSS_ACCESS_KEY",
+    "oss.oss_access_key",
+    os.environ.get("OSS_ACCESS_KEY", "your-access"),
+)
+
+OSS_ACCESS_SECRET = PersistentConfig(
+    "OSS_ACCESS_SECRET",
+    "oss.oss_access_secret",
+    os.environ.get("OSS_ACCESS_SECRET", "your-secret"),
+)
+
+OSS_ENDPOINT = PersistentConfig(
+    "OSS_ENDPOINT",
+    "oss.oss_endpoint",
+    os.environ.get("OSS_ENDPOINT", "your-endpoint"),
+)
+
+OSS_BUCKET_NAME = PersistentConfig(
+    "OSS_BUCKET_NAME",
+    "oss.oss_bucket_name",
+    os.environ.get("OSS_BUCKET_NAME", "your-bucket"),
+)
+
+####################################
+# UI ChatType 配置
+####################################
+
+UI_ENABLE_CREATE_IMAGE = PersistentConfig(
+    "UI_ENABLE_CREATE_IMAGE",
+    "ui.enable_create_image",
+    os.environ.get("UI_ENABLE_CREATE_IMAGE", "true").lower() == "true",
+)
+
+UI_ENABLE_CREATE_VIDEO = PersistentConfig(
+    "UI_ENABLE_CREATE_VIDEO",
+    "ui.enable_create_video",
+    os.environ.get("UI_ENABLE_CREATE_VIDEO", "true").lower() == "true",
+)
+
+UI_ENABLE_CREATE_PPT = PersistentConfig(
+    "UI_ENABLE_CREATE_PPT",
+    "ui.enable_create_ppt",
+    os.environ.get("UI_ENABLE_CREATE_PPT", "true").lower() == "true",
+)
+
+UI_ENABLE_CREATE_SEARCH = PersistentConfig(
+    "UI_ENABLE_CREATE_SEARCH",
+    "ui.enable_create_search",
+    os.environ.get("UI_ENABLE_CREATE_SEARCH", "true").lower() == "true",
+)

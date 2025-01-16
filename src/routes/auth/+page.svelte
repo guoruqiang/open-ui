@@ -120,12 +120,7 @@
 	<div class="fixed m-10 z-50">
 		<div class="flex space-x-2">
 			<div class=" self-center">
-				<img
-					crossorigin="anonymous"
-					src="{WEBUI_BASE_URL}/static/favicon.png"
-					class=" w-8 rounded-full"
-					alt="logo"
-				/>
+				<img src="{WEBUI_BASE_URL}/static/favicon.png" class=" w-8 rounded-full" alt="logo" />
 			</div>
 		</div>
 	</div>
@@ -153,7 +148,6 @@
 					>
 						<div>
 							{$i18n.t('Signing in')}
-							{$i18n.t('to')}
 							{$WEBUI_NAME}
 						</div>
 
@@ -173,7 +167,6 @@
 						<div class="mb-1">
 							<div class=" text-2xl font-medium">
 								{mode === 'signin' ? $i18n.t('Sign in') : $i18n.t('Sign up')}
-								{$i18n.t('to')}
 								{$WEBUI_NAME}
 							</div>
 
@@ -389,7 +382,7 @@
 <style>
 	.font-mona {
 		font-family:
-			'Mona Sans',
+			'STFangsong',
 			-apple-system,
 			'Inter',
 			ui-sans-serif,

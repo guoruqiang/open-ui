@@ -3,7 +3,7 @@ import uuid
 from typing import Optional
 
 from pydantic import BaseModel
-from sqlalchemy import Boolean, Column, String, Text
+from sqlalchemy import Boolean, Column, String, Text, Integer
 
 from open_webui.apps.webui.internal.db import Base, get_db
 from open_webui.apps.webui.models.users import UserModel, Users
@@ -12,7 +12,6 @@ from open_webui.utils.utils import verify_password
 
 log = logging.getLogger(__name__)
 log.setLevel(SRC_LOG_LEVELS["MODELS"])
-
 
 ####################
 # DB MODEL
@@ -55,6 +54,7 @@ class UserResponse(BaseModel):
     name: str
     role: str
     profile_image_url: str
+    expire_at: int
 
 
 class SigninResponse(Token, UserResponse):
@@ -94,6 +94,7 @@ class UserForm(BaseModel):
     email: str
     password: str
     profile_image_url: Optional[str] = "/user.png"
+    expire_at: Optional[int] = None
 
 
 class AddUserForm(UserForm):
@@ -102,14 +103,18 @@ class AddUserForm(UserForm):
 
 class AuthsTable:
     def insert_new_auth(
-            self,
-            email: str,
-            password: str,
-            name: str,
-            profile_image_url: str = "/user.png",
-            role: str = "pending",
-            oauth_sub: Optional[str] = None,
+        self,
+        email: str,
+        password: str,
+        name: str,
+        profile_image_url: str = "/user.png",
+        role: str = "pending",
+        expire_at: Optional[int] = None,
+        expire_duration: Optional[int] = None,
+        expire_unit: Optional[str] = None,
+        oauth_sub: Optional[str] = None,
     ) -> Optional[UserModel]:
+        log.debug(f"{expire_at}")
         with get_db() as db:
             log.info("insert_new_auth")
 
@@ -122,8 +127,18 @@ class AuthsTable:
             db.add(result)
 
             user = Users.insert_new_user(
-                id, name, email, profile_image_url, role, oauth_sub
+                id,
+                name,
+                email,
+                profile_image_url,
+                role,
+                expire_unit,
+                expire_duration,
+                expire_at,
+                oauth_sub,
             )
+
+            log.info(f"insert_new_auth: {user}")
 
             db.commit()
             db.refresh(result)

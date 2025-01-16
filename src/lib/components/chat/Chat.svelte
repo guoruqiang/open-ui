@@ -7,7 +7,7 @@
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	const i18n: Writable<i18nType> = getContext('i18n');
 
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 
 	import type { Unsubscriber, Writable } from 'svelte/store';
@@ -33,7 +33,8 @@
 		mobile,
 		showOverview,
 		chatTitle,
-		showArtifacts
+		showArtifacts,
+		chatType
 	} from '$lib/stores';
 	import {
 		convertMessagesToHistory,
@@ -72,6 +73,7 @@
 	import ChatControls from './ChatControls.svelte';
 	import EventConfirmDialog from '../common/ConfirmDialog.svelte';
 	import Placeholder from './Placeholder.svelte';
+	import dayjs from 'dayjs';
 
 	export let chatIdProp = '';
 
@@ -115,6 +117,17 @@
 	let chatFiles = [];
 	let files = [];
 	let params = {};
+
+	let expireAt_banner = {
+		id: 'expire_at_banner',
+		type: 'warning',
+		title: '',
+		content: `😭 您的订阅将在 ${dayjs($user?.expire_at * 1000).format('YYYY-MM-DD HH:mm')} 过期，请您[点击进行续费](${$config?.recharge_url})！`,
+		dismissible: true,
+		timestamp: Math.floor(Date.now() / 1000)
+	};
+
+	console.log(expireAt_banner);
 
 	$: if (chatIdProp) {
 		(async () => {
@@ -203,6 +216,8 @@
 				message.content += data.content;
 			} else if (type === 'replace') {
 				message.content = data.content;
+			} else if (type === 'replace_content') {
+				message.content.replace(data.replace, data.with);
 			} else if (type === 'action') {
 				if (data.action === 'continue') {
 					const continueButton = document.getElementById('continue-response-button');
@@ -283,6 +298,7 @@
 		if (!$chatId) {
 			chatIdUnsubscriber = chatId.subscribe(async (value) => {
 				if (!value) {
+					chatType.set('chat');
 					await initNewChat();
 				}
 			});
@@ -339,7 +355,7 @@
 		await showArtifacts.set(false);
 
 		if ($page.url.pathname.includes('/c/')) {
-			window.history.replaceState(history.state, '', `/`);
+			replaceState('/', history.state);
 		}
 
 		autoScroll = true;
@@ -418,6 +434,7 @@
 
 	const loadChat = async () => {
 		chatId.set(chatIdProp);
+		chatType.set('chat');
 		chat = await getChatById(localStorage.token, $chatId).catch(async (error) => {
 			await goto('/');
 			return null;
@@ -1295,7 +1312,7 @@
 
 		const messages = createMessagesList(responseMessageId);
 		if (messages.length == 2 && messages.at(-1).content !== '' && selectedModels[0] === model.id) {
-			window.history.replaceState(history.state, '', `/c/${_chatId}`);
+			replaceState(`/c/${_chatId}`, history.state);
 			const title = await generateChatTitle(userPrompt);
 			await setChatTitle(_chatId, title);
 		}
@@ -1611,7 +1628,7 @@
 
 		const messages = createMessagesList(responseMessageId);
 		if (messages.length == 2 && selectedModels[0] === model.id) {
-			window.history.replaceState(history.state, '', `/c/${_chatId}`);
+			replaceState(`/c/${_chatId}`, history.state);
 			const title = await generateChatTitle(userPrompt);
 			await setChatTitle(_chatId, title);
 		}
@@ -1643,6 +1660,15 @@
 		} else if ('message' in innerError) {
 			toast.error(innerError.message);
 			errorMessage = innerError.message;
+		}
+
+		const errorMessageTemplate =
+			'请您重新刷新页面，在移动端聊天的时候，不要长时间将网站后台运行，以免出现加载失败的问题！';
+		errorMessage = errorMessage.replace('Load failed', errorMessageTemplate);
+
+		if (errorMessage === '') {
+			errorMessage =
+				'请您重新刷新页面，在移动端聊天的时候，不要长时间将网站后台运行，以免出现加载失败的问题！';
 		}
 
 		responseMessage.error = {
@@ -1991,7 +2017,7 @@
 			<Pane defaultSize={50} class="h-full flex w-full relative">
 				{#if $banners.length > 0 && !history.currentId && !$chatId && selectedModels.length <= 1}
 					<div class="absolute top-12 left-0 right-0 w-full z-30">
-						<div class=" flex flex-col gap-1 w-full">
+						<div class=" font-primary flex flex-col gap-1 w-full">
 							{#each $banners.filter( (b) => (b.dismissible ? !JSON.parse(localStorage.getItem('dismissedBannerIds') ?? '[]').includes(b.id) : true) ) as banner}
 								<Banner
 									{banner}
@@ -2010,6 +2036,17 @@
 									}}
 								/>
 							{/each}
+							{#if $user?.expire_at !== null && $config?.recharge_url && $user?.expire_at < dayjs()
+										.add(3, 'days')
+										.unix()}
+								<Banner
+									banner={expireAt_banner}
+									isExpiring={true}
+									on:dismiss={(e) => {
+										const bannerId = e.detail;
+									}}
+								/>
+							{/if}
 						</div>
 					</div>
 				{/if}
@@ -2104,7 +2141,7 @@
 							/>
 
 							<div
-								class="absolute bottom-1.5 text-xs text-gray-500 text-center line-clamp-1 right-0 left-0"
+								class="font-primary absolute bottom-1.5 text-xs text-gray-500 text-center line-clamp-1 right-0 left-0"
 							>
 								{$i18n.t('LLMs can make mistakes. Verify important information.')}
 							</div>

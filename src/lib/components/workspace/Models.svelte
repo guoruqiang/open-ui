@@ -371,7 +371,7 @@
 
 <hr class=" border-gray-50 dark:border-gray-850 my-2.5" />
 
-<div class=" my-2 mb-5" id="model-list">
+<div class=" font-primary my-2 mb-5" id="model-list">
 	{#each _models.filter((m) => searchValue === '' || m.name
 				.toLowerCase()
 				.includes(searchValue.toLowerCase())) as model}
@@ -412,7 +412,7 @@
 						<div class="  font-semibold line-clamp-1">{model.name}</div>
 					</Tooltip>
 					<div class=" text-xs overflow-hidden text-ellipsis line-clamp-1 text-gray-500">
-						{!!model?.info?.meta?.description
+						{model?.info?.meta?.description
 							? model?.info?.meta?.description
 							: (model?.ollama?.digest ?? model.id)}
 					</div>

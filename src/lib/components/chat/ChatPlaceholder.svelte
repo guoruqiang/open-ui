@@ -50,7 +50,6 @@
 							placement="right"
 						>
 							<img
-								crossorigin="anonymous"
 								src={model?.info?.meta?.profile_image_url ??
 									($i18n.language === 'dg-DG'
 										? `/doge.png`
@@ -72,7 +71,8 @@
 				placement="top-start"
 			>
 				<div class="flex items-center gap-2 text-gray-500 font-medium text-lg my-2 w-fit">
-					<EyeSlash strokeWidth="2.5" className="size-5" /> {$i18n.t('Temporary Chat')}
+					<EyeSlash strokeWidth="2.5" className="size-5" />
+					{$i18n.t('Temporary Chat')}
 				</div>
 			</Tooltip>
 		{/if}

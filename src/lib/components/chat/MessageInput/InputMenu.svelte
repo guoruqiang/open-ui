@@ -21,6 +21,8 @@
 	export let tools = {};
 	export let onClose: Function;
 
+	let imageLoaded = {};
+
 	$: tools = Object.fromEntries(
 		Object.keys(tools).map((toolId) => [
 			toolId,
@@ -48,7 +50,7 @@
 
 	<div slot="content">
 		<DropdownMenu.Content
-			class="w-full max-w-[200px] rounded-xl px-1 py-1  border-gray-300/30 dark:border-gray-700/50 z-50 bg-white dark:bg-gray-850 dark:text-white shadow"
+			class="font-primary w-full max-w-[200px] rounded-xl px-1 py-1  border-gray-300/30 dark:border-gray-700/50 z-50 bg-white dark:bg-gray-850 dark:text-white shadow"
 			sideOffset={15}
 			alignOffset={-8}
 			side="top"
@@ -62,7 +64,25 @@
 							class="flex gap-2 items-center px-3 py-2 text-sm font-medium cursor-pointer rounded-xl"
 						>
 							<div class="flex-1 flex items-center gap-2">
-								<WrenchSolid />
+								{#if tools[toolId]?.icon_url}
+									{#if !imageLoaded[toolId]}
+										<WrenchSolid />
+									{/if}
+									<img
+										src={tools[toolId]?.icon_url}
+										class="w-4 h-4 {tools[toolId]?.icon_url.includes('png') ||
+										tools[toolId]?.icon_url.includes('svg')
+											? 'dark:invert-[80%]'
+											: ''}"
+										style="fill: currentColor;"
+										fill-rule="evenodd"
+										alt={tools[toolId].name}
+										on:load={() => (imageLoaded[toolId] = true)}
+										on:error={() => (imageLoaded[toolId] = false)}
+									/>
+								{:else}
+									<WrenchSolid />
+								{/if}
 								<Tooltip content={tools[toolId]?.description ?? ''} className="flex-1">
 									<div class=" line-clamp-1">{tools[toolId].name}</div>
 								</Tooltip>

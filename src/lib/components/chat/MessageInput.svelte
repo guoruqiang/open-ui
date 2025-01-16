@@ -310,7 +310,7 @@
 	};
 
 	const processFileCountLimit = async (inputFiles) => {
-		const maxFiles = $config?.file?.max_count;
+		const maxFiles = $config?.file?.max_count || 1;
 		const currentFilesCount = files.length;
 		const inputFilesCount = inputFiles.length;
 		const totalFilesCount = currentFilesCount + inputFilesCount;
@@ -479,7 +479,6 @@
 					>
 						<div class="flex items-center gap-2 text-sm dark:text-gray-500">
 							<img
-								crossorigin="anonymous"
 								alt="model profile"
 								class="size-4 max-w-[28px] object-cover rounded-full"
 								src={$models.find((model) => model.id === atSelectedModel.id)?.info?.meta
@@ -662,7 +661,7 @@
 							{/if}
 
 							<div class=" flex">
-								<div class=" ml-0.5 self-end mb-1.5 flex space-x-1">
+								<div class=" self-center ml-0.5 flex space-x-1">
 									<InputMenu
 										bind:webSearchEnabled
 										bind:selectedToolIds
@@ -671,6 +670,7 @@
 												a[e.id] = {
 													name: e.name,
 													description: e.meta.description,
+													icon_url: e.meta?.manifest?.icon_url || null,
 													enabled: false
 												};
 											}
@@ -879,7 +879,7 @@
 									}}
 								/>
 
-								<div class="self-end mb-2 flex space-x-1 mr-1">
+								<div class="self-center flex space-x-1 mr-1.5">
 									{#if !history?.currentId || history.messages[history.currentId]?.done == true}
 										<Tooltip content={$i18n.t('Record voice')}>
 											<button
@@ -929,105 +929,107 @@
 										</Tooltip>
 									{/if}
 								</div>
-							</div>
-						</div>
-						<div class="flex items-end w-10">
-							{#if !history.currentId || history.messages[history.currentId]?.done == true}
-								{#if prompt === ''}
-									<div class=" flex items-center mb-1">
-										<Tooltip content={$i18n.t('Call')}>
-											<button
-												class=" text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-850 transition rounded-full p-2 self-center"
-												type="button"
-												on:click={async () => {
-													if (selectedModels.length > 1) {
-														toast.error($i18n.t('Select only one model to call'));
+								{#if !history.currentId || history.messages[history.currentId]?.done == true}
+									{#if prompt === ''}
+										<div class=" flex items-center">
+											<Tooltip content={$i18n.t('Call')}>
+												<button
+													class=" bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full p-2 self-center"
+													type="button"
+													on:click={async () => {
+														if (selectedModels.length > 1) {
+															toast.error($i18n.t('Select only one model to call'));
 
-														return;
-													}
-
-													if ($config.audio.stt.engine === 'web') {
-														toast.error(
-															$i18n.t('Call feature is not supported when using Web STT engine')
-														);
-
-														return;
-													}
-													// check if user has access to getUserMedia
-													try {
-														let stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-														// If the user grants the permission, proceed to show the call overlay
-
-														if (stream) {
-															const tracks = stream.getTracks();
-															tracks.forEach((track) => track.stop());
+															return;
 														}
 
-														stream = null;
+														if ($config.audio.stt.engine === 'web') {
+															toast.error(
+																$i18n.t('Call feature is not supported when using Web STT engine')
+															);
 
-														showCallOverlay.set(true);
-														showControls.set(true);
-													} catch (err) {
-														// If the user denies the permission or an error occurs, show an error message
-														toast.error($i18n.t('Permission denied when accessing media devices'));
-													}
-												}}
-												aria-label="Call"
-											>
-												<Headphone className="size-6" />
-											</button>
-										</Tooltip>
-									</div>
-								{:else}
-									<div class=" flex items-center mb-1">
-										<Tooltip content={$i18n.t('Send message')}>
-											<button
-												id="send-message-button"
-												class="{prompt !== ''
-													? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '
-													: 'text-white bg-gray-200 dark:text-gray-900 dark:bg-gray-700 disabled'} transition rounded-full p-1.5 m-0.5 self-center"
-												type="submit"
-												disabled={prompt === ''}
-											>
-												<svg
-													xmlns="http://www.w3.org/2000/svg"
-													viewBox="0 0 16 16"
-													fill="currentColor"
-													class="size-6"
+															return;
+														}
+														// check if user has access to getUserMedia
+														try {
+															let stream = await navigator.mediaDevices.getUserMedia({
+																audio: true
+															});
+															// If the user grants the permission, proceed to show the call overlay
+
+															if (stream) {
+																const tracks = stream.getTracks();
+																tracks.forEach((track) => track.stop());
+															}
+
+															stream = null;
+
+															showCallOverlay.set(true);
+															showControls.set(true);
+														} catch (err) {
+															// If the user denies the permission or an error occurs, show an error message
+															toast.error(
+																$i18n.t('Permission denied when accessing media devices')
+															);
+														}
+													}}
+													aria-label="Call"
 												>
-													<path
-														fill-rule="evenodd"
-														d="M8 14a.75.75 0 0 1-.75-.75V4.56L4.03 7.78a.75.75 0 0 1-1.06-1.06l4.5-4.5a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06L8.75 4.56v8.69A.75.75 0 0 1 8 14Z"
-														clip-rule="evenodd"
-													/>
-												</svg>
-											</button>
-										</Tooltip>
+													<Headphone className="size-5" />
+												</button>
+											</Tooltip>
+										</div>
+									{:else}
+										<div class=" flex items-center">
+											<Tooltip content={$i18n.t('Send message')}>
+												<button
+													id="send-message-button"
+													class="{prompt !== ''
+														? 'bg-black text-white hover:bg-gray-900 dark:bg-white dark:text-black dark:hover:bg-gray-100 '
+														: 'text-white bg-gray-200 dark:text-gray-900 dark:bg-gray-700 disabled'} transition rounded-full p-1.5 m-0.5 self-center"
+													type="submit"
+													disabled={prompt === ''}
+												>
+													<svg
+														xmlns="http://www.w3.org/2000/svg"
+														viewBox="0 0 16 16"
+														fill="currentColor"
+														class="size-6"
+													>
+														<path
+															fill-rule="evenodd"
+															d="M8 14a.75.75 0 0 1-.75-.75V4.56L4.03 7.78a.75.75 0 0 1-1.06-1.06l4.5-4.5a.75.75 0 0 1 1.06 0l4.5 4.5a.75.75 0 0 1-1.06 1.06L8.75 4.56v8.69A.75.75 0 0 1 8 14Z"
+															clip-rule="evenodd"
+														/>
+													</svg>
+												</button>
+											</Tooltip>
+										</div>
+									{/if}
+								{:else}
+									<div class=" flex items-center">
+										<button
+											class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-1.5"
+											on:click={() => {
+												stopResponse();
+											}}
+										>
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												viewBox="0 0 24 24"
+												fill="currentColor"
+												class="size-6"
+											>
+												<path
+													fill-rule="evenodd"
+													d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm6-2.438c0-.724.588-1.312 1.313-1.312h4.874c.725 0 1.313.588 1.313 1.313v4.874c0 .725-.588 1.313-1.313 1.313H9.564a1.312 1.312 0 01-1.313-1.313V9.564z"
+													clip-rule="evenodd"
+												/>
+											</svg>
+										</button>
 									</div>
 								{/if}
-							{:else}
-								<div class=" flex items-center mb-1.5">
-									<button
-										class="bg-white hover:bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-800 transition rounded-full p-1.5"
-										on:click={() => {
-											stopResponse();
-										}}
-									>
-										<svg
-											xmlns="http://www.w3.org/2000/svg"
-											viewBox="0 0 24 24"
-											fill="currentColor"
-											class="size-6"
-										>
-											<path
-												fill-rule="evenodd"
-												d="M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12zm6-2.438c0-.724.588-1.312 1.313-1.312h4.874c.725 0 1.313.588 1.313 1.313v4.874c0 .725-.588 1.313-1.313 1.313H9.564a1.312 1.312 0 01-1.313-1.313V9.564z"
-												clip-rule="evenodd"
-											/>
-										</svg>
-									</button>
-								</div>
-							{/if}
+							</div>
 						</div>
 					</form>
 				{/if}

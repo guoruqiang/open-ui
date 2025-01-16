@@ -110,7 +110,7 @@ WEBUI_FAVICON_URL = os.environ.get("WEBUI_FAVICON_URL", f"{WEBUI_URL}/favicon.pn
 # ENV (dev,test,prod)
 ####################################
 
-ENV = os.environ.get("ENV", "prod")
+ENV = os.environ.get("ENV", "dev")
 
 FROM_INIT_PY = os.environ.get("FROM_INIT_PY", "False").lower() == "true"
 
@@ -228,7 +228,7 @@ if FROM_INIT_PY:
     ).resolve()
 
 RESET_CONFIG_ON_START = (
-        os.environ.get("RESET_CONFIG_ON_START", "False").lower() == "true"
+    os.environ.get("RESET_CONFIG_ON_START", "False").lower() == "true"
 )
 
 if RESET_CONFIG_ON_START:

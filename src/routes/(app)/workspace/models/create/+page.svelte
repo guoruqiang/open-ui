@@ -62,7 +62,11 @@
 	let capabilities = {
 		vision: true,
 		usage: undefined,
-		base64: undefined
+		base64: undefined,
+		createPPT: undefined,
+		createImage: undefined,
+		createVideo: undefined,
+		createSearch: undefined
 	};
 
 	let toolIds = [];
@@ -84,9 +88,17 @@
 			if (baseModel.owned_by === 'openai') {
 				capabilities.usage = baseModel.info?.meta?.capabilities?.usage ?? false;
 				capabilities.base64 = baseModel.info?.meta?.capabilities?.base64 ?? false;
+				capabilities.createImage = baseModel.info?.meta?.capabilities?.createImage ?? false;
+				capabilities.createVideo = baseModel.info?.meta?.capabilities?.createVideo ?? false;
+				capabilities.createPPT = baseModel.info?.meta?.capabilities?.createPPT ?? false;
+				capabilities.createSearch = baseModel.info?.meta?.capabilities?.createSearch ?? false;
 			} else {
 				delete capabilities.usage;
 				delete capabilities.base64;
+				delete capabilities.createPPT;
+				delete capabilities.createImage;
+				delete capabilities.createVideo;
+				delete capabilities.createSearch;
 			}
 			capabilities = capabilities;
 		}
@@ -322,11 +334,10 @@
 					// try to upload the image
 					const res = await uploadModelImage(localStorage.token, file);
 
-					// update the profile_image_url
-					info.meta.profile_image_url = res?.filename
-						? `/api/v1/files/model/images/${res.filename}`
-						: compressedSrc;
-
+					// Update the profile_image_url
+					info.meta.profile_image_url =
+						res?.meta?.oss_url ||
+						(res?.filename ? `/api/v1/files/model/images/${res.filename}` : compressedSrc);
 					inputFiles = null;
 				};
 			};

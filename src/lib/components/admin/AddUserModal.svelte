@@ -6,6 +6,7 @@
 
 	import Modal from '../common/Modal.svelte';
 	import { WEBUI_BASE_URL } from '$lib/constants';
+	import dayjs from 'dayjs';
 
 	const i18n = getContext('i18n');
 	const dispatch = createEventDispatcher();
@@ -15,12 +16,15 @@
 	let loading = false;
 	let tab = '';
 	let inputFiles;
+	let expire_duration = 1;
+	let expire_unit = 'month';
 
 	let _user = {
 		name: '',
 		email: '',
 		password: '',
-		role: 'user'
+		role: 'user',
+		expire_at: dayjs().format('YYYY-MM-DDTHH:mm')
 	};
 
 	$: if (show) {
@@ -28,7 +32,8 @@
 			name: '',
 			email: '',
 			password: '',
-			role: 'user'
+			role: 'user',
+			expire_at: dayjs().add(expire_duration, expire_unit).format('YYYY-MM-DDTHH:mm')
 		};
 	}
 
@@ -40,13 +45,15 @@
 
 		if (tab === '') {
 			loading = true;
+			_user.expire_at = dayjs(_user.expire_at).unix();
 
 			const res = await addUser(
 				localStorage.token,
 				_user.name,
 				_user.email,
 				_user.password,
-				_user.role
+				_user.role,
+				_user.expire_at
 			).catch((error) => {
 				toast.error(error);
 			});
@@ -74,7 +81,7 @@
 
 						if (idx > 0) {
 							if (
-								columns.length === 4 &&
+								columns.length === 5 &&
 								['admin', 'user', 'vip', 'svip', 'pending'].includes(columns[3].toLowerCase())
 							) {
 								const res = await addUser(
@@ -82,7 +89,8 @@
 									columns[0],
 									columns[1],
 									columns[2],
-									columns[3].toLowerCase()
+									columns[3].toLowerCase(),
+									columns[4]
 								).catch((error) => {
 									toast.error(`Row ${idx + 1}: ${error}`);
 									return null;
@@ -114,6 +122,10 @@
 			}
 		}
 	};
+
+	$: if (expire_duration && expire_unit) {
+		_user.expire_at = dayjs().add(expire_duration, expire_unit).format('YYYY-MM-DDTHH:mm');
+	}
 </script>
 
 <Modal size="sm" bind:show>
@@ -230,6 +242,58 @@
 									/>
 								</div>
 							</div>
+
+							<hr class=" dark:border-gray-800 my-3 w-full" />
+
+							<div class="flex flex-col w-full mt-2">
+								<div class="mb-1 text-xs text-gray-500">过期时长</div>
+
+								<div class="flex-1">
+									<select
+										class="w-full capitalize rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 disabled:text-gray-500 dark:disabled:text-gray-500 outline-none"
+										bind:value={expire_duration}
+										placeholder="输入过期时长"
+										required
+									>
+										{#each Array(12)
+											.fill(0)
+											.map((_, i) => i + 1) as duration}
+											<option value={duration}>{duration}</option>
+										{/each}
+									</select>
+								</div>
+							</div>
+
+							<div class="flex flex-col w-full mt-2">
+								<div class="mb-1 text-xs text-gray-500">过期单位</div>
+
+								<div class="flex-1">
+									<select
+										class="w-full capitalize rounded-lg py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-850 disabled:text-gray-500 dark:disabled:text-gray-500 outline-none"
+										bind:value={expire_unit}
+										placeholder="输入过期单位"
+										required
+									>
+										<option value="day">天</option>
+										<option value="week">周</option>
+										<option value="month">月</option>
+										<option value="quarter">季</option>
+										<option value="year">年</option>
+									</select>
+								</div>
+							</div>
+
+							<div class="flex flex-col w-full mt-2">
+								<div class=" mb-1 text-xs text-gray-500">{$i18n.t('Expire At')}</div>
+								<div class="flex-1">
+									<input
+										class="w-full rounded py-2 px-4 text-sm dark:text-gray-300 dark:bg-gray-800 outline-none"
+										type="datetime-local"
+										bind:value={_user.expire_at}
+										required
+									/>
+								</div>
+							</div>
 						{:else if tab === 'import'}
 							<div>
 								<div class="mb-3 w-full">
@@ -258,7 +322,7 @@
 
 								<div class=" text-xs text-gray-500">
 									ⓘ {$i18n.t(
-										'Ensure your CSV file includes 4 columns in this order: Name, Email, Password, Role.'
+										'Ensure your CSV file includes 5 columns in this order: Name, Email, Password, Role, Expire_At.'
 									)}
 									<a
 										class="underline dark:text-gray-200"

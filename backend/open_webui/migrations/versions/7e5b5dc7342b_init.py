@@ -6,6 +6,7 @@ Create Date: 2024-06-24 13:15:33.808998
 
 """
 
+from datetime import datetime, timedelta
 from typing import Sequence, Union
 
 import sqlalchemy as sa
@@ -183,6 +184,37 @@ def upgrade() -> None:
             sa.UniqueConstraint("api_key"),
             sa.UniqueConstraint("oauth_sub"),
         )
+    else:
+        conn = op.get_bind()
+        inspector = sa.inspect(conn)
+        user_table_columns = [
+            column["name"] for column in inspector.get_columns("user")
+        ]
+        print(user_table_columns)
+
+        if "expire_at" not in user_table_columns:
+            # Get the current datetime
+            now = datetime.now()
+
+            # Calculate the datetime one year from now
+            one_year_from_now = now + timedelta(days=365)  # Corrected here
+
+            # Convert the datetime object to a timestamp (seconds) and then to an integer
+            one_year_from_now_timestamp = int(one_year_from_now.timestamp())
+
+            op.add_column(
+                "user",
+                sa.Column(
+                    "expire_at",
+                    sa.BigInteger(),
+                    nullable=False,
+                    default=one_year_from_now_timestamp,
+                ),
+            )
+
+            # Optional: Update existing rows with default value (if needed)
+            # This is if you want to set a default for existing rows, not just future ones
+            # op.execute(sa.text("UPDATE user SET expire_at = 0 WHERE expire_at IS NULL"))
     # ### end Alembic commands ###
 
 

@@ -1,8 +1,10 @@
+from datetime import datetime
 import time
 from typing import Optional
 
+from dateutil.relativedelta import relativedelta
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import BigInteger, Column, String, Text
+from sqlalchemy import BigInteger, Column, String, Text, Integer
 
 from open_webui.apps.webui.internal.db import Base, JSONField, get_db
 from open_webui.apps.webui.models.chats import Chats
@@ -31,6 +33,7 @@ class User(Base):
     last_active_at = Column(BigInteger)
     updated_at = Column(BigInteger)
     created_at = Column(BigInteger)
+    expire_at = Column(BigInteger)
 
     api_key = Column(String, nullable=True, unique=True)
     settings = Column(JSONField, nullable=True)
@@ -52,9 +55,10 @@ class UserModel(BaseModel):
     role: str = "pending"
     profile_image_url: str
 
-    last_active_at: int  # timestamp in epoch
     updated_at: int  # timestamp in epoch
     created_at: int  # timestamp in epoch
+    last_active_at: int  # timestamp in epoch
+    expire_at: int
 
     api_key: Optional[str] = None
     settings: Optional[UserSettings] = None
@@ -76,25 +80,50 @@ class UserRoleUpdateForm(BaseModel):
 
 
 class UserUpdateForm(BaseModel):
+    role: str
     name: str
     email: str
     profile_image_url: str
     password: Optional[str] = None
+    expire_at: Optional[int] = None
 
 
 class UsersTable:
     def insert_new_user(
-            self,
-            id: str,
-            name: str,
-            email: str,
-            profile_image_url: str = "/user.png",
-            role: str = "pending",
-            oauth_sub: Optional[str] = None,
+        self,
+        id: str,
+        name: str,
+        email: str,
+        profile_image_url: str = "/user.png",
+        role: str = "pending",
+        expire_unit: Optional[str] = None,
+        expire_duration: Optional[int] = None,
+        expire_at: Optional[int] = None,
+        oauth_sub: Optional[str] = None,
     ) -> Optional[UserModel]:
         with get_db() as db:
             init_settings = UserSettings()
-            init_settings.ui["backgroundImageUrl"] = backgroundImageUrl
+            current_time = datetime.now()
+            print(f"{expire_duration} {expire_unit}")
+
+            # 根据单位选择时间增量
+            if expire_at is None and expire_duration and expire_unit:
+                if expire_unit == "week":
+                    expire_time = current_time + relativedelta(weeks=expire_duration)
+                elif expire_unit == "month":
+                    expire_time = current_time + relativedelta(months=expire_duration)
+                elif expire_unit == "year":
+                    expire_time = current_time + relativedelta(years=expire_duration)
+                elif expire_unit == "day":
+                    expire_time = current_time + relativedelta(days=expire_duration)
+                else:
+                    raise ValueError(
+                        "Invalid expire_unit. Must be 'week', 'month', or 'year'."
+                    )
+
+                # 将计算的日期转换为时间戳（秒）
+                expire_at = int(expire_time.timestamp())
+
             user = UserModel(
                 **{
                     "id": id,
@@ -105,6 +134,7 @@ class UsersTable:
                     "last_active_at": int(time.time()),
                     "created_at": int(time.time()),
                     "updated_at": int(time.time()),
+                    "expire_at": expire_at,
                     "settings": init_settings,
                     "oauth_sub": oauth_sub,
                 }
@@ -154,8 +184,8 @@ class UsersTable:
         with get_db() as db:
             users = (
                 db.query(User)
-                    # .offset(skip).limit(limit)
-                    .all()
+                # .offset(skip).limit(limit)
+                .all()
             )
             return [UserModel.model_validate(user) for user in users]
 
@@ -182,7 +212,7 @@ class UsersTable:
             return None
 
     def update_user_profile_image_url_by_id(
-            self, id: str, profile_image_url: str
+        self, id: str, profile_image_url: str
     ) -> Optional[UserModel]:
         try:
             with get_db() as db:
@@ -210,7 +240,7 @@ class UsersTable:
             return None
 
     def update_user_oauth_sub_by_id(
-            self, id: str, oauth_sub: str
+        self, id: str, oauth_sub: str
     ) -> Optional[UserModel]:
         try:
             with get_db() as db:

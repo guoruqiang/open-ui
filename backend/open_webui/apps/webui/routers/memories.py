@@ -47,9 +47,9 @@ class MemoryUpdateModel(BaseModel):
 
 @router.post("/add", response_model=Optional[MemoryModel])
 async def add_memory(
-        request: Request,
-        form_data: AddMemoryForm,
-        user=Depends(get_verified_user),
+    request: Request,
+    form_data: AddMemoryForm,
+    user=Depends(get_verified_user),
 ):
     memory = Memories.insert_new_memory(user.id, form_data.content)
 
@@ -80,7 +80,7 @@ class QueryMemoryForm(BaseModel):
 
 @router.post("/query")
 async def query_memory(
-        request: Request, form_data: QueryMemoryForm, user=Depends(get_verified_user)
+    request: Request, form_data: QueryMemoryForm, user=Depends(get_verified_user)
 ):
     results = VECTOR_DB_CLIENT.search(
         collection_name=f"user-memory-{user.id}",
@@ -96,7 +96,7 @@ async def query_memory(
 ############################
 @router.post("/reset", response_model=bool)
 async def reset_memory_from_vector_db(
-        request: Request, user=Depends(get_verified_user)
+    request: Request, user=Depends(get_verified_user)
 ):
     VECTOR_DB_CLIENT.delete_collection(f"user-memory-{user.id}")
 
@@ -146,10 +146,10 @@ async def delete_memory_by_user_id(user=Depends(get_verified_user)):
 
 @router.post("/{memory_id}/update", response_model=Optional[MemoryModel])
 async def update_memory_by_id(
-        memory_id: str,
-        request: Request,
-        form_data: MemoryUpdateModel,
-        user=Depends(get_verified_user),
+    memory_id: str,
+    request: Request,
+    form_data: MemoryUpdateModel,
+    user=Depends(get_verified_user),
 ):
     memory = Memories.update_memory_by_id(memory_id, form_data.content)
     if memory is None:

@@ -1,6 +1,8 @@
 import logging
 import uuid
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime, timedelta, timezone
+
+
 from typing import Optional, Union
 
 import aiohttp
@@ -17,6 +19,7 @@ logging.getLogger("passlib").setLevel(logging.ERROR)
 
 SESSION_SECRET = WEBUI_SECRET_KEY
 ALGORITHM = "HS256"
+UTC = timezone.utc
 
 ##############
 # Auth Utils
@@ -56,7 +59,7 @@ def decode_token(token: str) -> Optional[dict]:
 
 
 def extract_token_from_auth_header(auth_header: str):
-    return auth_header[len("Bearer "):]
+    return auth_header[len("Bearer ") :]
 
 
 def create_api_key():
@@ -73,8 +76,8 @@ def get_http_authorization_cred(auth_header: str):
 
 
 def get_current_user(
-        request: Request,
-        auth_token: HTTPAuthorizationCredentials = Depends(bearer_security),
+    request: Request,
+    auth_token: HTTPAuthorizationCredentials = Depends(bearer_security),
 ):
     token = None
 
@@ -113,7 +116,7 @@ def get_current_user(
 def get_current_user_by_api_key(api_key: str):
     user = Users.get_user_by_api_key(api_key)
 
-    if user is None:
+    if user is None or user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=ERROR_MESSAGES.INVALID_TOKEN,
@@ -125,7 +128,11 @@ def get_current_user_by_api_key(api_key: str):
 
 
 def get_verified_user(user=Depends(get_current_user)):
-    if user.role == "pending":
+    if user.role == "pending" or (
+        user.expire_at
+        and datetime.fromtimestamp(user.expire_at, UTC) < datetime.now(UTC)
+        and user.role != "admin"
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=ERROR_MESSAGES.ACCESS_PROHIBITED,
@@ -145,31 +152,22 @@ def get_admin_user(user=Depends(get_current_user)):
 async def validate_token(token, secret):
     if not token or not secret:
         return {
-            'success': False,
-            'error': 'Unexpected error: token or secret is None or empty'
+            "success": False,
+            "error": "Unexpected error: token or secret is None or empty",
         }
 
-    url = 'https://challenges.cloudflare.com/turnstile/v0/siteverify'
-    headers = {'Content-Type': 'application/json'}
-    payload = {
-        'response': token,
-        'secret': secret
-    }
+    url = "https://challenges.cloudflare.com/turnstile/v0/siteverify"
+    headers = {"Content-Type": "application/json"}
+    payload = {"response": token, "secret": secret}
 
     try:
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload, headers=headers) as response:
                 response.raise_for_status()
                 data = await response.json()
-                error_codes = data.get('error-codes', [])
+                error_codes = data.get("error-codes", [])
                 error = error_codes[0] if error_codes else None
-                return {
-                    'success': data.get('success', False),
-                    'error': error
-                }
+                return {"success": data.get("success", False), "error": error}
 
     except Exception as e:
-        return {
-            'success': False,
-            'error': f'Unexpected error: {str(e)}'
-        }
+        return {"success": False, "error": f"Unexpected error: {str(e)}"}
