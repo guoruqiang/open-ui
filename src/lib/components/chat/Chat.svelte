@@ -7,7 +7,7 @@
 	import { getContext, onDestroy, onMount, tick } from 'svelte';
 	const i18n: Writable<i18nType> = getContext('i18n');
 
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 
 	import type { Unsubscriber, Writable } from 'svelte/store';
@@ -355,7 +355,7 @@
 		await showArtifacts.set(false);
 
 		if ($page.url.pathname.includes('/c/')) {
-			window.history.replaceState(history.state, '', `/`);
+			replaceState('/', history.state);
 		}
 
 		autoScroll = true;
@@ -1312,7 +1312,7 @@
 
 		const messages = createMessagesList(responseMessageId);
 		if (messages.length == 2 && messages.at(-1).content !== '' && selectedModels[0] === model.id) {
-			window.history.replaceState(history.state, '', `/c/${_chatId}`);
+			replaceState(`/c/${_chatId}`, history.state);
 			const title = await generateChatTitle(userPrompt);
 			await setChatTitle(_chatId, title);
 		}
@@ -1628,7 +1628,7 @@
 
 		const messages = createMessagesList(responseMessageId);
 		if (messages.length == 2 && selectedModels[0] === model.id) {
-			window.history.replaceState(history.state, '', `/c/${_chatId}`);
+			replaceState(`/c/${_chatId}`, history.state);
 			const title = await generateChatTitle(userPrompt);
 			await setChatTitle(_chatId, title);
 		}

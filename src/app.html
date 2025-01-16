@@ -104,6 +104,10 @@
 					document.getElementById('splash-screen').style.display = 'none';
 					document.body.style.overflow = 'hidden';
 				}
+
+				window.addEventListener('load', function () {
+					document.getElementById('main-content').style.display = 'contents';
+				});
 			};
 		</script>
 
@@ -137,6 +141,9 @@
 				"
 				src="/favicon.png"
 			/>
+			<div id="progress-bar">
+				<div id="progress"></div>
+			</div>
 		</div>
 	</body>
 </html>
@@ -167,11 +174,49 @@
 		justify-content: center;
 		align-items: center;
 		background: #fff;
+		animation: fadeIn 1s ease-in-out;
 	}
 
 	@keyframes pulse {
 		50% {
 			opacity: 0.65;
+		}
+	}
+
+	@keyframes fadeIn {
+		0% {
+			opacity: 0;
+		}
+		100% {
+			opacity: 1;
+		}
+	}
+
+	#progress-bar {
+		position: absolute;
+		bottom: 40%;
+		left: 50%;
+		width: 250px;
+		height: 15px;
+		background: #e0e0e0;
+		border-radius: 10px;
+		transform: translateX(-50%);
+		overflow: hidden;
+	}
+
+	#progress {
+		width: 0;
+		height: 100%;
+		background: linear-gradient(90deg, #4fd1c5 0%, #63b3ed 100%);
+		animation: load 1s ease-in-out forwards;
+	}
+
+	@keyframes load {
+		0% {
+			width: 0;
+		}
+		100% {
+			width: 100%;
 		}
 	}
 
