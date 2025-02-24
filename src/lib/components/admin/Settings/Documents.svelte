@@ -17,7 +17,16 @@
 		resetUploadDir,
 		getRAGConfig,
 		updateRAGConfig
+<<<<<<< HEAD
 	} from '$lib/apis/rag';
+=======
+	} from '$lib/apis/retrieval';
+
+	import { knowledge, models } from '$lib/stores';
+	import { getKnowledgeBases } from '$lib/apis/knowledge';
+	import { uploadDir, deleteAllFiles, deleteFileById } from '$lib/apis/files';
+
+>>>>>>> upstream/main
 	import ResetUploadDirConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 	import ResetVectorDBConfirmDialog from '$lib/components/common/ConfirmDialog.svelte';
 
@@ -25,6 +34,8 @@
 	import { toast } from 'svelte-sonner';
 	import SensitiveInput from '$lib/components/common/SensitiveInput.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+	import Switch from '$lib/components/common/Switch.svelte';
+	import Textarea from '$lib/components/common/Textarea.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -37,6 +48,7 @@
 
 	let embeddingEngine = '';
 	let embeddingModel = '';
+	let embeddingBatchSize = 1;
 	let rerankingModel = '';
 
 	let fileMaxSize = 5;
@@ -46,13 +58,20 @@
 	let tikaServerUrl = '';
 	let showTikaServerUrl = false;
 
+	let textSplitter = '';
 	let chunkSize = 0;
 	let chunkOverlap = 0;
 	let pdfExtractImages = true;
 
-	let OpenAIKey = '';
+	let RAG_FULL_CONTEXT = false;
+
+	let enableGoogleDriveIntegration = false;
+
 	let OpenAIUrl = '';
-	let OpenAIBatchSize = 1;
+	let OpenAIKey = '';
+
+	let OllamaUrl = '';
+	let OllamaKey = '';
 
 	let querySettings = {
 		template: '',
@@ -121,17 +140,17 @@
 		const res = await updateEmbeddingConfig(localStorage.token, {
 			embedding_engine: embeddingEngine,
 			embedding_model: embeddingModel,
-			...(embeddingEngine === 'openai'
-				? {
-						openai_config: {
-							key: OpenAIKey,
-							url: OpenAIUrl,
-							batch_size: OpenAIBatchSize
-						}
-					}
-				: {})
+			embedding_batch_size: embeddingBatchSize,
+			ollama_config: {
+				key: OllamaKey,
+				url: OllamaUrl
+			},
+			openai_config: {
+				key: OpenAIKey,
+				url: OpenAIUrl
+			}
 		}).catch(async (error) => {
-			toast.error(error);
+			toast.error(`${error}`);
 			await setEmbeddingConfig();
 			return null;
 		});
@@ -154,7 +173,7 @@
 		const res = await updateRerankingConfig(localStorage.token, {
 			reranking_model: rerankingModel
 		}).catch(async (error) => {
-			toast.error(error);
+			toast.error(`${error}`);
 			await setRerankingConfig();
 			return null;
 		});
@@ -189,11 +208,14 @@
 		}
 		const res = await updateRAGConfig(localStorage.token, {
 			pdf_extract_images: pdfExtractImages,
+			enable_google_drive_integration: enableGoogleDriveIntegration,
 			file: {
 				max_size: fileMaxSize,
 				max_count: fileMaxCount
 			},
+			RAG_FULL_CONTEXT: RAG_FULL_CONTEXT,
 			chunk: {
+				text_splitter: textSplitter,
 				chunk_overlap: chunkOverlap,
 				chunk_size: chunkSize
 			},
@@ -222,10 +244,13 @@
 		if (embeddingConfig) {
 			embeddingEngine = embeddingConfig.embedding_engine;
 			embeddingModel = embeddingConfig.embedding_model;
+			embeddingBatchSize = embeddingConfig.embedding_batch_size ?? 1;
 
 			OpenAIKey = embeddingConfig.openai_config.key;
 			OpenAIUrl = embeddingConfig.openai_config.url;
-			OpenAIBatchSize = embeddingConfig.openai_config.batch_size ?? 1;
+
+			OllamaKey = embeddingConfig.ollama_config.key;
+			OllamaUrl = embeddingConfig.ollama_config.url;
 		}
 	};
 
@@ -256,23 +281,34 @@
 		await setRerankingConfig();
 
 		querySettings = await getQuerySettings(localStorage.token);
+
 		const res = await getRAGConfig(localStorage.token);
 
 		if (res) {
 			pdfExtractImages = res.pdf_extract_images;
 
+			textSplitter = res.chunk.text_splitter;
 			chunkSize = res.chunk.chunk_size;
 			chunkOverlap = res.chunk.chunk_overlap;
+
+			RAG_FULL_CONTEXT = res.RAG_FULL_CONTEXT;
 
 			contentExtractionEngine = res.content_extraction.engine;
 			tikaServerUrl = res.content_extraction.tika_server_url;
 			showTikaServerUrl = contentExtractionEngine === 'tika';
 
+<<<<<<< HEAD
 			fileMaxSize = res?.file.max_size ?? null;
 			fileMaxCount = res?.file.max_count ?? null;
 
 			ossSettings = res.oss;
 			console.log('ossSettings:', ossSettings);
+=======
+			fileMaxSize = res?.file.max_size ?? '';
+			fileMaxCount = res?.file.max_count ?? '';
+
+			enableGoogleDriveIntegration = res.enable_google_drive_integration;
+>>>>>>> upstream/main
 		}
 	});
 </script>
@@ -281,7 +317,7 @@
 	bind:show={showResetUploadDirConfirm}
 	on:confirm={async () => {
 		const res = await deleteAllFiles(localStorage.token).catch((error) => {
-			toast.error(error);
+			toast.error(`${error}`);
 			return null;
 		});
 
@@ -295,7 +331,7 @@
 	bind:show={showResetConfirm}
 	on:confirm={() => {
 		const res = resetVectorDB(localStorage.token).catch((error) => {
-			toast.error(error);
+			toast.error(`${error}`);
 			return null;
 		});
 
@@ -371,7 +407,7 @@
 				<div class=" self-center text-xs font-medium">{$i18n.t('Embedding Model Engine')}</div>
 				<div class="flex items-center relative">
 					<select
-						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
+						class="dark:bg-gray-900 w-fit pr-8 rounded-sm px-2 p-1 text-xs bg-transparent outline-hidden text-right"
 						bind:value={embeddingEngine}
 						placeholder="Select an embedding model engine"
 						on:change={(e) => {
@@ -392,9 +428,9 @@
 			</div>
 
 			{#if embeddingEngine === 'openai'}
-				<div class="my-0.5 flex gap-2">
+				<div class="my-0.5 flex gap-2 pr-2">
 					<input
-						class="flex-1 w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+						class="flex-1 w-full rounded-lg text-sm bg-transparent outline-hidden"
 						placeholder={$i18n.t('API Base URL')}
 						bind:value={OpenAIUrl}
 						required
@@ -402,6 +438,24 @@
 
 					<SensitiveInput placeholder={$i18n.t('API Key')} bind:value={OpenAIKey} />
 				</div>
+			{:else if embeddingEngine === 'ollama'}
+				<div class="my-0.5 flex gap-2 pr-2">
+					<input
+						class="flex-1 w-full rounded-lg text-sm bg-transparent outline-hidden"
+						placeholder={$i18n.t('API Base URL')}
+						bind:value={OllamaUrl}
+						required
+					/>
+
+					<SensitiveInput
+						placeholder={$i18n.t('API Key')}
+						bind:value={OllamaKey}
+						required={false}
+					/>
+				</div>
+			{/if}
+
+			{#if embeddingEngine === 'ollama' || embeddingEngine === 'openai'}
 				<div class="flex mt-0.5 space-x-2">
 					<div class=" self-center text-xs font-medium">{$i18n.t('Embedding Batch Size')}</div>
 					<div class=" flex-1">
@@ -411,13 +465,13 @@
 							min="1"
 							max="2048"
 							step="1"
-							bind:value={OpenAIBatchSize}
+							bind:value={embeddingBatchSize}
 							class="w-full h-2 rounded-lg appearance-none cursor-pointer dark:bg-gray-700"
 						/>
 					</div>
 					<div class="">
 						<input
-							bind:value={OpenAIBatchSize}
+							bind:value={embeddingBatchSize}
 							type="number"
 							class=" bg-transparent text-center w-14"
 							min="-2"
@@ -432,7 +486,7 @@
 				<div class=" self-center text-xs font-medium">{$i18n.t('Hybrid Search')}</div>
 
 				<button
-					class="p-1 px-3 text-xs flex rounded transition"
+					class="p-1 px-3 text-xs flex rounded-sm transition"
 					on:click={() => {
 						toggleHybridSearch();
 					}}
@@ -446,6 +500,7 @@
 				</button>
 			</div>
 
+<<<<<<< HEAD
 			<div class=" flex w-full justify-between">
 				<div class=" self-center text-xs font-medium">{$i18n.t('Enable Base64')}</div>
 
@@ -462,10 +517,23 @@
 						<span class="ml-2 self-center">{$i18n.t('Off')}</span>
 					{/if}
 				</button>
+=======
+			<div class=" py-0.5 flex w-full justify-between">
+				<div class=" self-center text-xs font-medium">{$i18n.t('Full Context Mode')}</div>
+				<div class="flex items-center relative">
+					<Tooltip
+						content={RAG_FULL_CONTEXT
+							? 'Inject entire contents as context for comprehensive processing, this is recommended for complex queries.'
+							: 'Default to segmented retrieval for focused and relevant content extraction, this is recommended for most cases.'}
+					>
+						<Switch bind:state={RAG_FULL_CONTEXT} />
+					</Tooltip>
+				</div>
+>>>>>>> upstream/main
 			</div>
 		</div>
 
-		<hr class="dark:border-gray-850" />
+		<hr class="border-gray-100 dark:border-gray-850" />
 
 		<div class="space-y-2" />
 		<div>
@@ -474,26 +542,19 @@
 			{#if embeddingEngine === 'ollama'}
 				<div class="flex w-full">
 					<div class="flex-1 mr-2">
-						<select
-							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+						<input
+							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
 							bind:value={embeddingModel}
-							placeholder={$i18n.t('Select a model')}
+							placeholder={$i18n.t('Set embedding model')}
 							required
-						>
-							{#if !embeddingModel}
-								<option value="" disabled selected>{$i18n.t('Select a model')}</option>
-							{/if}
-							{#each $models.filter((m) => m.id && m.ollama && !(m?.preset ?? false)) as model}
-								<option value={model.id} class="bg-gray-50 dark:bg-gray-700">{model.name}</option>
-							{/each}
-						</select>
+						/>
 					</div>
 				</div>
 			{:else}
 				<div class="flex w-full">
 					<div class="flex-1 mr-2">
 						<input
-							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
 							placeholder={$i18n.t('Set embedding model (e.g. {{model}})', {
 								model: embeddingModel.slice(-40)
 							})}
@@ -572,7 +633,7 @@
 					<div class="flex w-full">
 						<div class="flex-1 mr-2">
 							<input
-								class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+								class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
 								placeholder={$i18n.t('Set reranking model (e.g. {{model}})', {
 									model: 'BAAI/bge-reranker-v2-m3'
 								})}
@@ -637,16 +698,16 @@
 			{/if}
 		</div>
 
-		<hr class=" dark:border-gray-850" />
+		<hr class=" border-gray-100 dark:border-gray-850" />
 
 		<div class="">
-			<div class="text-sm font-medium">{$i18n.t('Content Extraction')}</div>
+			<div class="text-sm font-medium mb-1">{$i18n.t('Content Extraction')}</div>
 
-			<div class="flex w-full justify-between mt-2">
+			<div class="flex w-full justify-between">
 				<div class="self-center text-xs font-medium">{$i18n.t('Engine')}</div>
 				<div class="flex items-center relative">
 					<select
-						class="dark:bg-gray-900 w-fit pr-8 rounded px-2 p-1 text-xs bg-transparent outline-none text-right"
+						class="dark:bg-gray-900 w-fit pr-8 rounded-sm px-2 text-xs bg-transparent outline-hidden text-right"
 						bind:value={contentExtractionEngine}
 						on:change={(e) => {
 							showTikaServerUrl = e.target.value === 'tika';
@@ -659,10 +720,10 @@
 			</div>
 
 			{#if showTikaServerUrl}
-				<div class="flex w-full mt-2">
+				<div class="flex w-full mt-1">
 					<div class="flex-1 mr-2">
 						<input
-							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+							class="w-full rounded-lg py-2 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
 							placeholder={$i18n.t('Enter Tika Server URL')}
 							bind:value={tikaServerUrl}
 						/>
@@ -671,12 +732,154 @@
 			{/if}
 		</div>
 
-		<hr class=" dark:border-gray-850" />
+		<hr class=" border-gray-100 dark:border-gray-850" />
+
+		<div class="text-sm font-medium mb-1">{$i18n.t('Google Drive')}</div>
 
 		<div class="">
-			<div class="text-sm font-medium">{$i18n.t('Files')}</div>
+			<div class="flex justify-between items-center text-xs">
+				<div class="text-xs font-medium">{$i18n.t('Enable Google Drive')}</div>
+				<div>
+					<Switch bind:state={enableGoogleDriveIntegration} />
+				</div>
+			</div>
+		</div>
 
-			<div class=" my-2 flex gap-1.5">
+		<hr class=" border-gray-100 dark:border-gray-850" />
+
+		<div class=" ">
+			<div class=" text-sm font-medium mb-1">{$i18n.t('Query Params')}</div>
+
+			<div class=" flex gap-1.5">
+				<div class="flex flex-col w-full gap-1">
+					<div class=" text-xs font-medium w-full">{$i18n.t('Top K')}</div>
+
+					<div class="w-full">
+						<input
+							class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
+							type="number"
+							placeholder={$i18n.t('Enter Top K')}
+							bind:value={querySettings.k}
+							autocomplete="off"
+							min="0"
+						/>
+					</div>
+				</div>
+
+				{#if querySettings.hybrid === true}
+					<div class=" flex flex-col w-full gap-1">
+						<div class="text-xs font-medium w-full">
+							{$i18n.t('Minimum Score')}
+						</div>
+
+						<div class="w-full">
+							<input
+								class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
+								type="number"
+								step="0.01"
+								placeholder={$i18n.t('Enter Score')}
+								bind:value={querySettings.r}
+								autocomplete="off"
+								min="0.0"
+								title={$i18n.t('The score should be a value between 0.0 (0%) and 1.0 (100%).')}
+							/>
+						</div>
+					</div>
+				{/if}
+			</div>
+
+			{#if querySettings.hybrid === true}
+				<div class="mt-2 text-xs text-gray-400 dark:text-gray-500">
+					{$i18n.t(
+						'Note: If you set a minimum score, the search will only return documents with a score greater than or equal to the minimum score.'
+					)}
+				</div>
+			{/if}
+
+			<div class="mt-2">
+				<div class=" mb-1 text-xs font-medium">{$i18n.t('RAG Template')}</div>
+				<Tooltip
+					content={$i18n.t('Leave empty to use the default prompt, or enter a custom prompt')}
+					placement="top-start"
+				>
+					<Textarea
+						bind:value={querySettings.template}
+						placeholder={$i18n.t('Leave empty to use the default prompt, or enter a custom prompt')}
+					/>
+				</Tooltip>
+			</div>
+		</div>
+
+		<hr class=" border-gray-100 dark:border-gray-850" />
+
+		<div class=" ">
+			<div class="mb-1 text-sm font-medium">{$i18n.t('Chunk Params')}</div>
+
+			<div class="flex w-full justify-between mb-1.5">
+				<div class="self-center text-xs font-medium">{$i18n.t('Text Splitter')}</div>
+				<div class="flex items-center relative">
+					<select
+						class="dark:bg-gray-900 w-fit pr-8 rounded-sm px-2 text-xs bg-transparent outline-hidden text-right"
+						bind:value={textSplitter}
+					>
+						<option value="">{$i18n.t('Default')} ({$i18n.t('Character')})</option>
+						<option value="token">{$i18n.t('Token')} ({$i18n.t('Tiktoken')})</option>
+					</select>
+				</div>
+			</div>
+
+			<div class=" flex gap-1.5">
+				<div class="  w-full justify-between">
+					<div class="self-center text-xs font-medium min-w-fit mb-1">
+						{$i18n.t('Chunk Size')}
+					</div>
+					<div class="self-center">
+						<input
+							class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
+							type="number"
+							placeholder={$i18n.t('Enter Chunk Size')}
+							bind:value={chunkSize}
+							autocomplete="off"
+							min="0"
+						/>
+					</div>
+				</div>
+
+				<div class="w-full">
+					<div class=" self-center text-xs font-medium min-w-fit mb-1">
+						{$i18n.t('Chunk Overlap')}
+					</div>
+
+					<div class="self-center">
+						<input
+							class="w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
+							type="number"
+							placeholder={$i18n.t('Enter Chunk Overlap')}
+							bind:value={chunkOverlap}
+							autocomplete="off"
+							min="0"
+						/>
+					</div>
+				</div>
+			</div>
+
+			<div class="my-2">
+				<div class="flex justify-between items-center text-xs">
+					<div class=" text-xs font-medium">{$i18n.t('PDF Extract Images (OCR)')}</div>
+
+					<div>
+						<Switch bind:state={pdfExtractImages} />
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<hr class=" border-gray-100 dark:border-gray-850" />
+
+		<div class="">
+			<div class="text-sm font-medium mb-1">{$i18n.t('Files')}</div>
+
+			<div class=" flex gap-1.5">
 				<div class="w-full">
 					<div class=" self-center text-xs font-medium min-w-fit mb-1">
 						{$i18n.t('Max Upload Size')}
@@ -690,7 +893,7 @@
 							placement="top-start"
 						>
 							<input
-								class="w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+								class="w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
 								type="number"
 								placeholder={$i18n.t('Leave empty for unlimited')}
 								bind:value={fileMaxSize}
@@ -713,7 +916,7 @@
 							placement="top-start"
 						>
 							<input
-								class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
+								class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-hidden"
 								type="number"
 								placeholder={$i18n.t('Leave empty for unlimited')}
 								bind:value={fileMaxCount}
@@ -726,129 +929,7 @@
 			</div>
 		</div>
 
-		<hr class=" dark:border-gray-850" />
-
-		<div class=" ">
-			<div class=" text-sm font-medium">{$i18n.t('Query Params')}</div>
-
-			<div class=" flex gap-1">
-				<div class="  flex w-full justify-between">
-					<div class="self-center text-xs font-medium min-w-fit">{$i18n.t('Top K')}</div>
-
-					<div class="self-center p-3">
-						<input
-							class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
-							type="number"
-							placeholder={$i18n.t('Enter Top K')}
-							bind:value={querySettings.k}
-							autocomplete="off"
-							min="0"
-						/>
-					</div>
-				</div>
-
-				{#if querySettings.hybrid === true}
-					<div class="  flex w-full justify-between">
-						<div class=" self-center text-xs font-medium min-w-fit">
-							{$i18n.t('Minimum Score')}
-						</div>
-
-						<div class="self-center p-3">
-							<input
-								class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
-								type="number"
-								step="0.01"
-								placeholder={$i18n.t('Enter Score')}
-								bind:value={querySettings.r}
-								autocomplete="off"
-								min="0.0"
-								title={$i18n.t('The score should be a value between 0.0 (0%) and 1.0 (100%).')}
-							/>
-						</div>
-					</div>
-				{/if}
-			</div>
-
-			{#if querySettings.hybrid === true}
-				<div class="mt-2 mb-1 text-xs text-gray-400 dark:text-gray-500">
-					{$i18n.t(
-						'Note: If you set a minimum score, the search will only return documents with a score greater than or equal to the minimum score.'
-					)}
-				</div>
-
-				<hr class=" dark:border-gray-850 my-3" />
-			{/if}
-
-			<div>
-				<div class=" mb-2.5 text-sm font-medium">{$i18n.t('RAG Template')}</div>
-				<Tooltip
-					content={$i18n.t('Leave empty to use the default prompt, or enter a custom prompt')}
-					placement="top-start"
-				>
-					<textarea
-						bind:value={querySettings.template}
-						placeholder={$i18n.t('Leave empty to use the default prompt, or enter a custom prompt')}
-						class="w-full rounded-lg px-4 py-3 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none resize-none"
-						rows="4"
-					/>
-				</Tooltip>
-			</div>
-		</div>
-
-		<hr class=" dark:border-gray-850" />
-
-		<div class=" ">
-			<div class=" text-sm font-medium">{$i18n.t('Chunk Params')}</div>
-
-			<div class=" my-2 flex gap-1.5">
-				<div class="  w-full justify-between">
-					<div class="self-center text-xs font-medium min-w-fit mb-1">{$i18n.t('Chunk Size')}</div>
-					<div class="self-center">
-						<input
-							class=" w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
-							type="number"
-							placeholder={$i18n.t('Enter Chunk Size')}
-							bind:value={chunkSize}
-							autocomplete="off"
-							min="0"
-						/>
-					</div>
-				</div>
-
-				<div class="w-full">
-					<div class=" self-center text-xs font-medium min-w-fit mb-1">
-						{$i18n.t('Chunk Overlap')}
-					</div>
-
-					<div class="self-center">
-						<input
-							class="w-full rounded-lg py-1.5 px-4 text-sm bg-gray-50 dark:text-gray-300 dark:bg-gray-850 outline-none"
-							type="number"
-							placeholder={$i18n.t('Enter Chunk Overlap')}
-							bind:value={chunkOverlap}
-							autocomplete="off"
-							min="0"
-						/>
-					</div>
-				</div>
-			</div>
-
-			<div class="my-3">
-				<div class="flex justify-between items-center text-xs">
-					<div class=" text-xs font-medium">{$i18n.t('PDF Extract Images (OCR)')}</div>
-
-					<button
-						class=" text-xs font-medium text-gray-500"
-						type="button"
-						on:click={() => {
-							pdfExtractImages = !pdfExtractImages;
-						}}>{pdfExtractImages ? $i18n.t('On') : $i18n.t('Off')}</button
-					>
-				</div>
-			</div>
-		</div>
-
-		<hr class=" dark:border-gray-850" />
+		<hr class=" border-gray-100 dark:border-gray-850" />
 
 		<div class="gap-1">
 			<div class=" mb-2 text-sm font-medium">{$i18n.t('Oss Storage')}</div>
@@ -995,13 +1076,15 @@
 						/>
 					</svg>
 				</div>
-				<div class=" self-center text-sm font-medium">{$i18n.t('Reset Vector Storage')}</div>
+				<div class=" self-center text-sm font-medium">
+					{$i18n.t('Reset Vector Storage/Knowledge')}
+				</div>
 			</button>
 		</div>
 	</div>
 	<div class="flex justify-end pt-3 text-sm font-medium">
 		<button
-			class=" px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-gray-100 transition rounded-lg"
+			class="px-3.5 py-1.5 text-sm font-medium bg-black hover:bg-gray-900 text-white dark:bg-white dark:text-black dark:hover:bg-gray-100 transition rounded-full"
 			type="submit"
 		>
 			{$i18n.t('Save')}

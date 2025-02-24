@@ -5,8 +5,9 @@ type TextStreamUpdate = {
 	done: boolean;
 	value: string;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	citations?: any;
+	sources?: any;
 	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	selectedModelId?: any;
 	error?: any;
 	usage?: ResponseUsage;
 };
@@ -66,15 +67,24 @@ async function* openAIStreamToIterator(
 				break;
 			}
 
-			if (parsedData.citations) {
-				yield { done: false, value: '', citations: parsedData.citations };
+			if (parsedData.sources) {
+				yield { done: false, value: '', sources: parsedData.sources };
+				continue;
+			}
+
+			if (parsedData.selected_model_id) {
+				yield { done: false, value: '', selectedModelId: parsedData.selected_model_id };
+				continue;
+			}
+
+			if (parsedData.usage) {
+				yield { done: false, value: '', usage: parsedData.usage };
 				continue;
 			}
 
 			yield {
 				done: false,
-				value: parsedData.choices?.[0]?.delta?.content ?? '',
-				usage: parsedData.usage
+				value: parsedData.choices?.[0]?.delta?.content ?? ''
 			};
 			await sleep(5);
 		} catch (e) {
@@ -93,10 +103,24 @@ async function* streamLargeDeltasAsRandomChunks(
 			yield textStreamUpdate;
 			return;
 		}
-		if (textStreamUpdate.citations) {
+
+		if (textStreamUpdate.error) {
 			yield textStreamUpdate;
 			continue;
 		}
+		if (textStreamUpdate.sources) {
+			yield textStreamUpdate;
+			continue;
+		}
+		if (textStreamUpdate.selectedModelId) {
+			yield textStreamUpdate;
+			continue;
+		}
+		if (textStreamUpdate.usage) {
+			yield textStreamUpdate;
+			continue;
+		}
+
 		let content = textStreamUpdate.value;
 		if (content.length < 5) {
 			await sleep(5);

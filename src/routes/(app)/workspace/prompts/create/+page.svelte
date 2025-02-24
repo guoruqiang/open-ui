@@ -1,24 +1,25 @@
-<script>
+<script lang="ts">
 	import { toast } from 'svelte-sonner';
-
 	import { goto } from '$app/navigation';
 	import { prompts } from '$lib/stores';
 	import { onMount, tick, getContext } from 'svelte';
 
-	import { createNewPrompt, getPrompts } from '$lib/apis/prompts';
-
 	const i18n = getContext('i18n');
 
-	let loading = false;
+	import { createNewPrompt, getPrompts } from '$lib/apis/prompts';
+	import PromptEditor from '$lib/components/workspace/Prompts/PromptEditor.svelte';
 
-	// ///////////
-	// Prompt
-	// ///////////
+	let prompt = null;
+	const onSubmit = async (_prompt) => {
+		const prompt = await createNewPrompt(localStorage.token, _prompt).catch((error) => {
+			toast.error(`${error}`);
+			return null;
+		});
 
-	let title = '';
-	let command = '';
-	let content = '';
+		if (prompt) {
+			toast.success($i18n.t('Prompt created successfully'));
 
+<<<<<<< HEAD
 	$: command = title !== '' ? `${title.replace(/\s+/g, '-').toLowerCase()}` : '';
 
 	const submitHandler = async () => {
@@ -39,6 +40,11 @@
 		}
 
 		loading = false;
+=======
+			await prompts.set(await getPrompts(localStorage.token));
+			await goto('/workspace/prompts');
+		}
+>>>>>>> upstream/main
 	};
 
 	onMount(async () => {
@@ -49,13 +55,15 @@
 				)
 			)
 				return;
-			const prompt = JSON.parse(event.data);
-			console.log(prompt);
+			const _prompt = JSON.parse(event.data);
+			console.log(_prompt);
 
-			title = prompt.title;
-			await tick();
-			content = prompt.content;
-			command = prompt.command;
+			prompt = {
+				title: _prompt.title,
+				command: _prompt.command,
+				content: _prompt.content,
+				access_control: null
+			};
 		});
 
 		if (window.opener ?? false) {
@@ -63,19 +71,20 @@
 		}
 
 		if (sessionStorage.prompt) {
-			const prompt = JSON.parse(sessionStorage.prompt);
+			const _prompt = JSON.parse(sessionStorage.prompt);
 
-			console.log(prompt);
-			title = prompt.title;
-			await tick();
-			content = prompt.content;
-			command = prompt.command.at(0) === '/' ? prompt.command.slice(1) : prompt.command;
-
+			prompt = {
+				title: _prompt.title,
+				command: _prompt.command,
+				content: _prompt.content,
+				access_control: null
+			};
 			sessionStorage.removeItem('prompt');
 		}
 	});
 </script>
 
+<<<<<<< HEAD
 <div class="w-full max-h-full">
 	<button
 		class="flex space-x-1"
@@ -213,3 +222,8 @@
 		</div>
 	</form>
 </div>
+=======
+{#key prompt}
+	<PromptEditor {prompt} {onSubmit} />
+{/key}
+>>>>>>> upstream/main

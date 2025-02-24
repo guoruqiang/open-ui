@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { config, models, settings, showCallOverlay } from '$lib/stores';
+	import { config, models, settings, showCallOverlay, TTSWorker } from '$lib/stores';
 	import { onMount, tick, getContext, onDestroy, createEventDispatcher } from 'svelte';
 	import { DropdownMenu } from 'bits-ui';
 	import Dropdown from '$lib/components/common/Dropdown.svelte';
@@ -15,6 +15,7 @@
 
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
 	import VideoInputMenu from './CallOverlay/VideoInputMenu.svelte';
+	import { KokoroWorker } from '$lib/workers/KokoroWorker';
 
 	const i18n = getContext('i18n');
 
@@ -158,7 +159,7 @@
 		const file = blobToFile(audioBlob, 'recording.wav');
 
 		const res = await transcribeAudio(localStorage.token, file).catch((error) => {
-			toast.error(error);
+			toast.error(`${error}`);
 			return null;
 		});
 
@@ -221,8 +222,41 @@
 	};
 
 	const startRecording = async () => {
+<<<<<<< HEAD
 		if (!audioStream) {
 			audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+=======
+		if ($showCallOverlay) {
+			if (!audioStream) {
+				audioStream = await navigator.mediaDevices.getUserMedia({
+					audio: {
+						echoCancellation: true,
+						noiseSuppression: true,
+						autoGainControl: true
+					}
+				});
+			}
+			mediaRecorder = new MediaRecorder(audioStream);
+
+			mediaRecorder.onstart = () => {
+				console.log('Recording started');
+				audioChunks = [];
+				analyseAudio(audioStream);
+			};
+
+			mediaRecorder.ondataavailable = (event) => {
+				if (hasStartedSpeaking) {
+					audioChunks.push(event.data);
+				}
+			};
+
+			mediaRecorder.onstop = (e) => {
+				console.log('Recording stopped', audioStream, e);
+				stopRecordingCallback();
+			};
+
+			mediaRecorder.start();
+>>>>>>> upstream/main
 		}
 		mediaRecorder = new MediaRecorder(audioStream);
 
@@ -471,7 +505,21 @@
 					}
 				}
 
-				if ($config.audio.tts.engine !== '') {
+				if ($settings.audio?.tts?.engine === 'browser-kokoro') {
+					const blob = await $TTSWorker
+						.generate({
+							text: content,
+							voice: $settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice
+						})
+						.catch((error) => {
+							console.error(error);
+							toast.error(`${error}`);
+						});
+
+					if (blob) {
+						audioCache.set(content, new Audio(blob));
+					}
+				} else if ($config.audio.tts.engine !== '') {
 					const res = await synthesizeOpenAISpeech(
 						localStorage.token,
 						$settings?.audio?.tts?.voice ?? $config?.audio?.tts?.voice,

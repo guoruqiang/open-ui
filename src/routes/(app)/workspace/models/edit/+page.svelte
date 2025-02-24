@@ -1,10 +1,10 @@
 <script>
-	import { v4 as uuidv4 } from 'uuid';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
 	import { WEBUI_API_BASE_URL } from '$lib/constants';
 
 	import { onMount, getContext } from 'svelte';
+<<<<<<< HEAD
 	import { page } from '$app/stores';
 	import { settings, user, config, models, tools, functions } from '$lib/stores';
 	import { splitStream } from '$lib/utils';
@@ -22,121 +22,28 @@
 	import { uploadModelImage, base64ToFile } from '$lib/apis/files';
 	import Capabilities from '$lib/components/workspace/Models/Capabilities.svelte';
 
+=======
+>>>>>>> upstream/main
 	const i18n = getContext('i18n');
 
-	let loading = false;
-	let success = false;
+	import { page } from '$app/stores';
+	import { config, models, settings } from '$lib/stores';
 
-	let filesInputElement;
-	let inputFiles;
+	import { getModelById, updateModelById } from '$lib/apis/models';
 
-	let digest = '';
-	let pullProgress = null;
-
-	let showAdvanced = false;
-	let showPreview = false;
-
-	// ///////////
-	// model
-	// ///////////
+	import { getModels } from '$lib/apis';
+	import ModelEditor from '$lib/components/workspace/Models/ModelEditor.svelte';
 
 	let model = null;
 
-	let id = '';
-	let name = '';
-
-	let info = {
-		id: '',
-		base_model_id: null,
-		name: '',
-		meta: {
-			profile_image_url: '/static/favicon.png',
-			description: '',
-			suggestion_prompts: null,
-			tags: []
-		},
-		params: {
-			system: ''
-		}
-	};
-
-	let params = {};
-	let capabilities = {
-		vision: true
-	};
-
-	let knowledge = [];
-	let toolIds = [];
-	let filterIds = [];
-	let actionIds = [];
-
-	const updateHandler = async () => {
-		loading = true;
-
-		info.id = id;
-		info.name = name;
-		info.meta.capabilities = capabilities;
-
-		if (knowledge.length > 0) {
-			info.meta.knowledge = knowledge;
-		} else {
-			if (info.meta.knowledge) {
-				delete info.meta.knowledge;
-			}
-		}
-
-		if (toolIds.length > 0) {
-			info.meta.toolIds = toolIds;
-		} else {
-			if (info.meta.toolIds) {
-				delete info.meta.toolIds;
-			}
-		}
-
-		if (filterIds.length > 0) {
-			info.meta.filterIds = filterIds;
-		} else {
-			if (info.meta.filterIds) {
-				delete info.meta.filterIds;
-			}
-		}
-
-		if (actionIds.length > 0) {
-			info.meta.actionIds = actionIds;
-		} else {
-			if (info.meta.actionIds) {
-				delete info.meta.actionIds;
-			}
-		}
-
-		info.params.stop = params.stop ? params.stop.split(',').filter((s) => s.trim()) : null;
-		Object.keys(info.params).forEach((key) => {
-			if (info.params[key] === '' || info.params[key] === null) {
-				delete info.params[key];
-			}
-		});
-
-		const res = await updateModelById(localStorage.token, info.id, info);
-
-		if (res) {
-			await models.set(await getModels(localStorage.token));
-			toast.success($i18n.t('Model updated successfully'));
-			await goto('/workspace/models');
-		}
-
-		loading = false;
-		success = false;
-	};
-
-	onMount(() => {
+	onMount(async () => {
 		const _id = $page.url.searchParams.get('id');
-
 		if (_id) {
-			model = $models.find((m) => m.id === _id);
-			if (model) {
-				id = model.id;
-				name = model.name;
+			model = await getModelById(localStorage.token, _id).catch((e) => {
+				return null;
+			});
 
+<<<<<<< HEAD
 				info = {
 					...info,
 					...JSON.parse(
@@ -193,14 +100,33 @@
 
 				console.log(model);
 			} else {
+=======
+			if (!model) {
+>>>>>>> upstream/main
 				goto('/workspace/models');
 			}
 		} else {
 			goto('/workspace/models');
 		}
 	});
+
+	const onSubmit = async (modelInfo) => {
+		const res = await updateModelById(localStorage.token, modelInfo.id, modelInfo);
+
+		if (res) {
+			await models.set(
+				await getModels(
+					localStorage.token,
+					$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
+				)
+			);
+			toast.success($i18n.t('Model updated successfully'));
+			await goto('/workspace/models');
+		}
+	};
 </script>
 
+<<<<<<< HEAD
 <div class="w-full max-h-full">
 	<input
 		bind:this={filesInputElement}
@@ -694,3 +620,8 @@
 		</form>
 	{/if}
 </div>
+=======
+{#if model}
+	<ModelEditor edit={true} {model} {onSubmit} />
+{/if}
+>>>>>>> upstream/main

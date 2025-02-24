@@ -6,10 +6,14 @@
 	import ArrowsPointingOut from '../icons/ArrowsPointingOut.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 	import SvgPanZoom from '../common/SVGPanZoom.svelte';
+<<<<<<< HEAD
 	import { goto } from '$app/navigation';
 
 	const i18n = getContext('i18n');
 	const dispatch = createEventDispatcher();
+=======
+	import ArrowLeft from '../icons/ArrowLeft.svelte';
+>>>>>>> upstream/main
 
 	export let overlay = false;
 	export let history;
@@ -307,6 +311,11 @@
 			}
 		});
 
+		if (contents.length === 0) {
+			showControls.set(false);
+			showArtifacts.set(false);
+		}
+
 		selectedContentIdx = contents ? contents.length - 1 : 0;
 	};
 
@@ -386,10 +395,31 @@
 	});
 </script>
 
+<<<<<<< HEAD
 <div class="w-full h-full relative flex flex-col bg-gray-50 dark:bg-gray-850">
 	<!-- New top spacing div -->
 	<div class="h-12 flex-shrink-0 relative">
 		<div class="absolute top-0 right-0 p-2">
+=======
+<div class=" w-full h-full relative flex flex-col bg-gray-50 dark:bg-gray-850">
+	<div class="w-full h-full flex-1 relative">
+		{#if overlay}
+			<div class=" absolute top-0 left-0 right-0 bottom-0 z-10"></div>
+		{/if}
+
+		<div class="absolute pointer-events-none z-50 w-full flex items-center justify-start p-4">
+			<button
+				class="self-center pointer-events-auto p-1 rounded-full bg-white dark:bg-gray-850"
+				on:click={() => {
+					showArtifacts.set(false);
+				}}
+			>
+				<ArrowLeft className="size-3.5  text-gray-900 dark:text-white" />
+			</button>
+		</div>
+
+		<div class=" absolute pointer-events-none z-50 w-full flex items-center justify-end p-4">
+>>>>>>> upstream/main
 			<button
 				class="p-1 rounded-full bg-white dark:bg-gray-850 shadow-md hover:bg-gray-100 dark:hover:bg-gray-800 transition"
 				on:click={() => {
@@ -398,7 +428,11 @@
 					showArtifacts.set(false);
 				}}
 			>
+<<<<<<< HEAD
 				<XMark className="size-4 text-gray-900 dark:text-white" />
+=======
+				<XMark className="size-3.5 text-gray-900 dark:text-white" />
+>>>>>>> upstream/main
 			</button>
 		</div>
 	</div>

@@ -1,9 +1,13 @@
 from logging.config import fileConfig
 
 from alembic import context
+<<<<<<< HEAD
 from sqlalchemy import engine_from_config, pool
 
 from open_webui.apps.webui.models.auths import Auth
+=======
+from open_webui.models.auths import Auth
+>>>>>>> upstream/main
 from open_webui.env import DATABASE_URL
 
 # this is the Alembic Config object, which provides

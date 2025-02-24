@@ -5,13 +5,19 @@
 	import type { Token } from 'marked';
 	import { getContext } from 'svelte';
 	import { WEBUI_BASE_URL } from '$lib/constants';
+<<<<<<< HEAD
 	import Image from '$lib/components/common/Image.svelte';
 	import { copyToClipboard, revertSanitizedResponseContent, unescapeHtml } from '$lib/utils';
+=======
+	import { copyToClipboard, unescapeHtml } from '$lib/utils';
+>>>>>>> upstream/main
 
 	import KatexRenderer from './KatexRenderer.svelte';
+	import Source from './Source.svelte';
 
 	export let id: string;
 	export let tokens: Token[];
+<<<<<<< HEAD
 
 	const i18n = getContext('i18n');
 
@@ -25,6 +31,9 @@
 				alt: token.text || ''
 			}));
 	}
+=======
+	export let onSourceClick: Function = () => {};
+>>>>>>> upstream/main
 </script>
 
 {#each tokens as token}
@@ -36,13 +45,15 @@
 			{@html html}
 		{:else if token.text.includes(`<iframe src="${WEBUI_BASE_URL}/api/v1/files/`)}
 			{@html `${token.text}`}
+		{:else if token.text.includes(`<source_id`)}
+			<Source {id} {token} onClick={onSourceClick} />
 		{:else}
 			{token.text}
 		{/if}
 	{:else if token.type === 'link'}
 		{#if token.tokens}
 			<a href={token.href} target="_blank" rel="nofollow" title={token.title}>
-				<svelte:self id={`${id}-a`} tokens={token.tokens} />
+				<svelte:self id={`${id}-a`} tokens={token.tokens} {onSourceClick} />
 			</a>
 		{:else}
 			<a href={token.href} target="_blank" rel="nofollow" title={token.title}>{token.text}</a>
@@ -50,13 +61,9 @@
 	{:else if token.type === 'image'}
 		<Image src={token.href} alt={token.text} isMarkdown={true} preview_src_list={imageUrls} />
 	{:else if token.type === 'strong'}
-		<strong>
-			<svelte:self id={`${id}-strong`} tokens={token.tokens} />
-		</strong>
+		<strong><svelte:self id={`${id}-strong`} tokens={token.tokens} {onSourceClick} /></strong>
 	{:else if token.type === 'em'}
-		<em>
-			<svelte:self id={`${id}-em`} tokens={token.tokens} />
-		</em>
+		<em><svelte:self id={`${id}-em`} tokens={token.tokens} {onSourceClick} /></em>
 	{:else if token.type === 'codespan'}
 		<!-- svelte-ignore a11y-click-events-have-key-events -->
 		<!-- svelte-ignore a11y-no-noninteractive-element-interactions -->
@@ -70,15 +77,17 @@
 	{:else if token.type === 'br'}
 		<br />
 	{:else if token.type === 'del'}
-		<del>
-			<svelte:self id={`${id}-del`} tokens={token.tokens} />
-		</del>
+		<del><svelte:self id={`${id}-del`} tokens={token.tokens} {onSourceClick} /></del>
 	{:else if token.type === 'inlineKatex'}
 		{#if token.text}
+<<<<<<< HEAD
 			<KatexRenderer
 				content={revertSanitizedResponseContent(token.text)}
 				displayMode={token?.displayMode ?? false}
 			/>
+=======
+			<KatexRenderer content={token.text} displayMode={false} />
+>>>>>>> upstream/main
 		{/if}
 	{:else if token.type === 'iframe'}
 		<iframe

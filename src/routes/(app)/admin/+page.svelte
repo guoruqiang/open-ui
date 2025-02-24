@@ -1,9 +1,8 @@
-<script>
-	import { WEBUI_BASE_URL } from '$lib/constants';
-	import { WEBUI_NAME, config, user, showSidebar } from '$lib/stores';
+<script lang="ts">
 	import { goto } from '$app/navigation';
-	import { onMount, getContext } from 'svelte';
+	import { onMount } from 'svelte';
 
+<<<<<<< HEAD
 	import dayjs from 'dayjs';
 	import relativeTime from 'dayjs/plugin/relativeTime';
 	dayjs.extend(relativeTime);
@@ -457,3 +456,9 @@
 		scrollbar-width: none; /* Firefox */
 	}
 </style>
+=======
+	onMount(() => {
+		goto('/admin/users');
+	});
+</script>
+>>>>>>> upstream/main

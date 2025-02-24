@@ -2,9 +2,16 @@
 	import { onMount, tick } from 'svelte';
 	import { goto } from '$app/navigation';
 
+<<<<<<< HEAD
 	import { getModels as _getModels } from '$lib/apis';
 	import { getAllChatTags } from '$lib/apis/chats';
 
+=======
+	import { getKnowledgeBases } from '$lib/apis/knowledge';
+	import { getFunctions } from '$lib/apis/functions';
+	import { getModels, getVersionUpdates } from '$lib/apis';
+	import { getAllTags } from '$lib/apis/chats';
+>>>>>>> upstream/main
 	import { getPrompts } from '$lib/apis/prompts';
 	import { getDocs } from '$lib/apis/documents';
 	import { getTools } from '$lib/apis/tools';
@@ -38,13 +45,10 @@
 
 	let loaded = false;
 
-	const getModels = async () => {
-		return _getModels(localStorage.token);
-	};
-
 	onMount(async () => {
 		if ($user === undefined) {
 			await goto('/auth');
+<<<<<<< HEAD
 		} else if (
 			$user.role !== 'pending' ||
 			($user?.expire_at !== null && $user?.expire_at < dayjs().unix() && $user.role !== 'admin')
@@ -124,6 +128,56 @@
 			await tick();
 
 			document.addEventListener('keydown', function (event) {
+=======
+		} else if (['user', 'admin'].includes($user.role)) {
+			try {
+				// Check if IndexedDB exists
+				DB = await openDB('Chats', 1);
+
+				if (DB) {
+					const chats = await DB.getAllFromIndex('chats', 'timestamp');
+					localDBChats = chats.map((item, idx) => chats[chats.length - 1 - idx]);
+
+					if (localDBChats.length === 0) {
+						await deleteDB('Chats');
+					}
+				}
+
+				console.log(DB);
+			} catch (error) {
+				// IndexedDB Not Found
+			}
+
+			const userSettings = await getUserSettings(localStorage.token).catch((error) => {
+				console.error(error);
+				return null;
+			});
+
+			if (userSettings) {
+				settings.set(userSettings.ui);
+			} else {
+				let localStorageSettings = {} as Parameters<(typeof settings)['set']>[0];
+
+				try {
+					localStorageSettings = JSON.parse(localStorage.getItem('settings') ?? '{}');
+				} catch (e: unknown) {
+					console.error('Failed to parse settings from localStorage', e);
+				}
+
+				settings.set(localStorageSettings);
+			}
+
+			models.set(
+				await getModels(
+					localStorage.token,
+					$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
+				)
+			);
+			banners.set(await getBanners(localStorage.token));
+			tools.set(await getTools(localStorage.token));
+
+			document.addEventListener('keydown', async function (event) {
+>>>>>>> upstream/main
 				const isCtrlPressed = event.ctrlKey || event.metaKey; // metaKey is for Cmd key on Mac
 				// Check if the Shift key is pressed
 				const isShiftPressed = event.shiftKey;
@@ -139,7 +193,7 @@
 				if (isShiftPressed && event.key === 'Escape') {
 					event.preventDefault();
 					console.log('focusInput');
-					document.getElementById('chat-textarea')?.focus();
+					document.getElementById('chat-input')?.focus();
 				}
 
 				// Check if Ctrl + Shift + ; is pressed
@@ -167,7 +221,11 @@
 				}
 
 				// Check if Ctrl + Shift + Backspace is pressed
-				if (isCtrlPressed && isShiftPressed && event.key === 'Backspace') {
+				if (
+					isCtrlPressed &&
+					isShiftPressed &&
+					(event.key === 'Backspace' || event.key === 'Delete')
+				) {
 					event.preventDefault();
 					console.log('deleteChat');
 					document.getElementById('delete-chat-button')?.click();
@@ -186,10 +244,22 @@
 					console.log('showShortcuts');
 					document.getElementById('show-shortcuts-button')?.click();
 				}
+
+				// Check if Ctrl + Shift + ' is pressed
+				if (isCtrlPressed && isShiftPressed && event.key.toLowerCase() === `'`) {
+					event.preventDefault();
+					console.log('temporaryChat');
+					temporaryChatEnabled.set(!$temporaryChatEnabled);
+					await goto('/');
+					const newChatButton = document.getElementById('new-chat-button');
+					setTimeout(() => {
+						newChatButton?.click();
+					}, 0);
+				}
 			});
 
-			if ($user.role === 'admin') {
-				showChangelog.set(localStorage.version !== $config.version);
+			if ($user.role === 'admin' && ($settings?.showChangelog ?? true)) {
+				showChangelog.set($settings?.version !== $config.version);
 			}
 
 			if ($page.url.searchParams.get('temporary-chat') === 'true') {
@@ -206,9 +276,24 @@
 <SettingsModal bind:show={$showSettings} />
 <ChangelogModal bind:show={$showChangelog} />
 
+<<<<<<< HEAD
+=======
+{#if version && compareVersion(version.latest, version.current) && ($settings?.showUpdateToast ?? true)}
+	<div class=" absolute bottom-8 right-8 z-50" in:fade={{ duration: 100 }}>
+		<UpdateInfoToast
+			{version}
+			on:close={() => {
+				localStorage.setItem('dismissedUpdateToast', Date.now().toString());
+				version = null;
+			}}
+		/>
+	</div>
+{/if}
+
+>>>>>>> upstream/main
 <div class="app relative">
 	<div
-		class=" text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 h-screen max-h-[100dvh] overflow-auto flex flex-row"
+		class=" text-gray-700 dark:text-gray-100 bg-white dark:bg-gray-900 h-screen max-h-[100dvh] overflow-auto flex flex-row justify-end"
 	>
 		{#if loaded}
 			{#if $user.role === 'pending' || ($user?.expire_at !== null && $user?.expire_at < dayjs().unix() && $user.role !== 'admin')}

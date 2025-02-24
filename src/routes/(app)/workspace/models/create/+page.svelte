@@ -2,14 +2,19 @@
 	import { v4 as uuidv4 } from 'uuid';
 	import { toast } from 'svelte-sonner';
 	import { goto } from '$app/navigation';
+<<<<<<< HEAD
 	import { settings, user, config, models, tools, functions } from '$lib/stores';
 
 	import TurndownService from 'turndown';
+=======
+	import { config, models, settings } from '$lib/stores';
+>>>>>>> upstream/main
 
 	import { onMount, tick, getContext } from 'svelte';
-	import { addNewModel, getModelById, getModelInfos } from '$lib/apis/models';
+	import { createNewModel, getModelById } from '$lib/apis/models';
 	import { getModels } from '$lib/apis';
 
+<<<<<<< HEAD
 	import AdvancedParams from '$lib/components/chat/Settings/Advanced/AdvancedParams.svelte';
 	import Checkbox from '$lib/components/common/Checkbox.svelte';
 	import Tags from '$lib/components/common/Tags.svelte';
@@ -151,81 +156,55 @@
 		});
 
 		if ($models.find((m) => m.id === info.id)) {
+=======
+	import ModelEditor from '$lib/components/workspace/Models/ModelEditor.svelte';
+
+	const i18n = getContext('i18n');
+
+	const onSubmit = async (modelInfo) => {
+		if ($models.find((m) => m.id === modelInfo.id)) {
+>>>>>>> upstream/main
 			toast.error(
-				`Error: A model with the ID '${info.id}' already exists. Please select a different ID to proceed.`
+				`Error: A model with the ID '${modelInfo.id}' already exists. Please select a different ID to proceed.`
 			);
-			loading = false;
-			success = false;
-			return success;
+			return;
 		}
 
-		if (info) {
-			const res = await addNewModel(localStorage.token, {
-				...info,
+		if (modelInfo.id === '') {
+			toast.error('Error: Model ID cannot be empty. Please enter a valid ID to proceed.');
+			return;
+		}
+
+		if (modelInfo) {
+			const res = await createNewModel(localStorage.token, {
+				...modelInfo,
 				meta: {
-					...info.meta,
-					profile_image_url: info.meta.profile_image_url ?? '/static/favicon.png',
-					suggestion_prompts: info.meta.suggestion_prompts
-						? info.meta.suggestion_prompts.filter((prompt) => prompt.content !== '')
+					...modelInfo.meta,
+					profile_image_url: modelInfo.meta.profile_image_url ?? '/static/favicon.png',
+					suggestion_prompts: modelInfo.meta.suggestion_prompts
+						? modelInfo.meta.suggestion_prompts.filter((prompt) => prompt.content !== '')
 						: null
 				},
-				params: { ...info.params, ...params }
+				params: { ...modelInfo.params }
+			}).catch((error) => {
+				toast.error(`${error}`);
+				return null;
 			});
 
 			if (res) {
-				await models.set(await getModels(localStorage.token));
+				await models.set(
+					await getModels(
+						localStorage.token,
+						$config?.features?.enable_direct_connections && ($settings?.directConnections ?? null)
+					)
+				);
 				toast.success($i18n.t('Model created successfully!'));
 				await goto('/workspace/models');
 			}
 		}
-
-		loading = false;
-		success = false;
 	};
 
-	const initModel = async (model) => {
-		name = model.name;
-		await tick();
-
-		id = model.id;
-
-		if (model.info.base_model_id) {
-			const base_model = $models
-				.filter((m) => !m?.preset)
-				.find((m) =>
-					[model.info.base_model_id, `${model.info.base_model_id}:latest`].includes(m.id)
-				);
-
-			console.log('base_model', base_model);
-
-			if (!base_model) {
-				model.info.base_model_id = null;
-			} else if ($models.find((m) => m.id === `${model.info.base_model_id}:latest`)) {
-				model.info.base_model_id = `${model.info.base_model_id}:latest`;
-			}
-		}
-
-		params = { ...params, ...model?.info?.params };
-		params.stop = params?.stop ? (params?.stop ?? []).join(',') : null;
-
-		capabilities = { ...capabilities, ...(model?.info?.meta?.capabilities ?? {}) };
-		toolIds = model?.info?.meta?.toolIds ?? [];
-
-		if (model?.info?.meta?.filterIds) {
-			filterIds = [...model?.info?.meta?.filterIds];
-		}
-
-		if (model?.info?.meta?.actionIds) {
-			actionIds = [...model?.info?.meta?.actionIds];
-		}
-
-		info = {
-			...info,
-			...model.info
-		};
-
-		console.log(info);
-	};
+	let model = null;
 
 	onMount(async () => {
 		window.addEventListener('message', async (event) => {
@@ -235,11 +214,7 @@
 				)
 			)
 				return;
-
-			const model = JSON.parse(event.data);
-			console.log(model);
-
-			initModel(model);
+			model = JSON.parse(event.data);
 		});
 
 		if (window.opener ?? false) {
@@ -247,15 +222,13 @@
 		}
 
 		if (sessionStorage.model) {
-			const model = JSON.parse(sessionStorage.model);
+			model = JSON.parse(sessionStorage.model);
 			sessionStorage.removeItem('model');
-
-			console.log(model);
-			initModel(model);
 		}
 	});
 </script>
 
+<<<<<<< HEAD
 <div class="w-full max-h-full">
 	<input
 		bind:this={filesInputElement}
@@ -772,3 +745,8 @@
 		</div>
 	</form>
 </div>
+=======
+{#key model}
+	<ModelEditor {model} {onSubmit} />
+{/key}
+>>>>>>> upstream/main

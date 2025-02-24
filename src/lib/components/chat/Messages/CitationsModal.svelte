@@ -2,6 +2,10 @@
 	import { getContext, onMount, tick } from 'svelte';
 	import Modal from '$lib/components/common/Modal.svelte';
 	import Tooltip from '$lib/components/common/Tooltip.svelte';
+<<<<<<< HEAD
+=======
+	import { WEBUI_API_BASE_URL } from '$lib/constants';
+>>>>>>> upstream/main
 
 	const i18n = getContext('i18n');
 
@@ -13,9 +17,15 @@
 	let mergedDocuments = [];
 
 	function calculatePercentage(distance: number) {
+<<<<<<< HEAD
 		if (distance < 0) return 100;
 		if (distance > 1) return 0;
 		return Math.round((1 - distance) * 10000) / 100;
+=======
+		if (distance < 0) return 0;
+		if (distance > 1) return 100;
+		return Math.round(distance * 10000) / 100;
+>>>>>>> upstream/main
 	}
 
 	function getRelevanceColor(percentage: number) {
@@ -38,7 +48,13 @@
 			};
 		});
 		if (mergedDocuments.every((doc) => doc.distance !== undefined)) {
+<<<<<<< HEAD
 			mergedDocuments.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity));
+=======
+			mergedDocuments = mergedDocuments.sort(
+				(a, b) => (b.distance ?? Infinity) - (a.distance ?? Infinity)
+			);
+>>>>>>> upstream/main
 		}
 	}
 </script>
@@ -87,9 +103,15 @@
 							>
 								<div class="text-sm dark:text-gray-400 flex items-center gap-2 w-fit">
 									<a
+<<<<<<< HEAD
 										class="hover:text-gray-500 hover:dark:text-gray-100 underline flex-grow"
 										href={document?.metadata?.file_id
 											? `/api/v1/files/${document?.metadata?.file_id}/content`
+=======
+										class="hover:text-gray-500 dark:hover:text-gray-100 underline grow"
+										href={document?.metadata?.file_id
+											? `${WEBUI_API_BASE_URL}/files/${document?.metadata?.file_id}/content${document?.metadata?.page !== undefined ? `#page=${document.metadata.page + 1}` : ''}`
+>>>>>>> upstream/main
 											: document.source?.url?.includes('http')
 												? document.source.url
 												: `#`}
@@ -107,7 +129,11 @@
 							</Tooltip>
 							{#if showRelevance}
 								<div class="text-sm font-medium dark:text-gray-300 mt-2">
+<<<<<<< HEAD
 									<strong>🌐 {$i18n.t('Relevance')}</strong>
+=======
+									{$i18n.t('Relevance')}
+>>>>>>> upstream/main
 								</div>
 								{#if document.distance !== undefined}
 									<Tooltip
@@ -119,7 +145,13 @@
 										<div class="text-sm my-1 dark:text-gray-400 flex items-center gap-2 w-fit">
 											{#if showPercentage}
 												{@const percentage = calculatePercentage(document.distance)}
+<<<<<<< HEAD
 												<span class={`px-1 rounded font-medium ${getRelevanceColor(percentage)}`}>
+=======
+												<span
+													class={`px-1 rounded-sm font-medium ${getRelevanceColor(percentage)}`}
+												>
+>>>>>>> upstream/main
 													{percentage.toFixed(2)}%
 												</span>
 												<span class="text-gray-500 dark:text-gray-500">
@@ -146,15 +178,28 @@
 					</div>
 					<div class="flex flex-col w-full">
 						<div class=" text-sm font-medium dark:text-gray-300 mt-2">
+<<<<<<< HEAD
 							<strong>📖 {$i18n.t('Content')}</strong>
+=======
+							{$i18n.t('Content')}
+>>>>>>> upstream/main
 						</div>
-						<pre class="text-sm dark:text-gray-400 whitespace-pre-line">
-							{document.document}
-						</pre>
+						{#if document.metadata?.html}
+							<iframe
+								class="w-full border-0 h-auto rounded-none"
+								sandbox="allow-scripts allow-forms allow-same-origin"
+								srcdoc={document.document}
+								title={$i18n.t('Content')}
+							></iframe>
+						{:else}
+							<pre class="text-sm dark:text-gray-400 whitespace-pre-line">
+                {document.document}
+              </pre>
+						{/if}
 					</div>
 
 					{#if documentIdx !== mergedDocuments.length - 1}
-						<hr class=" dark:border-gray-850 my-3" />
+						<hr class="border-gray-100 dark:border-gray-850 my-3" />
 					{/if}
 				{/each}
 			</div>

@@ -28,10 +28,17 @@
 	background-color: rgb(255 174 174);
 }
 
+<<<<<<< HEAD
 .rose-pine-dawn #chat-textarea {
 	background: rgb(255 243 242 / 67%);
     margin: 0.3rem;
     padding: 0.5rem;
+=======
+.rose-pine-dawn #chat-input {
+	background: #cecacd;
+	margin: 0.3rem;
+	padding: 0.5rem;
+>>>>>>> upstream/main
 }
 
 .rose-pine-dawn .bg-gradient-to-t.from-white.dark\:from-gray-800.from-40\%.pb-2 {

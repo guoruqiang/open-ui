@@ -4,26 +4,31 @@
 	const dispatch = createEventDispatcher();
 
 	import Markdown from './Markdown.svelte';
-	import LightBlub from '$lib/components/icons/LightBlub.svelte';
 	import { chatId, mobile, showArtifacts, showControls, showOverview } from '$lib/stores';
-	import ChatBubble from '$lib/components/icons/ChatBubble.svelte';
+	import FloatingButtons from '../ContentRenderer/FloatingButtons.svelte';
+	import { createMessagesList } from '$lib/utils';
 
 	export let id;
 	export let content;
+	export let history;
 	export let model = null;
+	export let sources = null;
 
 	export let save = false;
 	export let floatingButtons = true;
 	export let bufferTime = 30;
 
-	let contentContainerElement;
-	let buttonsContainerElement;
+	export let onSourceClick = () => {};
+	export let onTaskClick = () => {};
 
-	let selectedText = '';
-	let floatingInput = false;
-	let floatingInputValue = '';
+	export let onAddMessages = () => {};
+
+	let contentContainerElement;
+
+	let floatingButtonsElement;
 
 	const updateButtonPosition = (event) => {
+		const buttonsContainerElement = document.getElementById(`floating-buttons-${id}`);
 		if (
 			!contentContainerElement?.contains(event.target) &&
 			!buttonsContainerElement?.contains(event.target)
@@ -40,7 +45,6 @@
 			let selection = window.getSelection();
 
 			if (selection.toString().trim().length > 0) {
-				floatingInput = false;
 				const range = selection.getRangeAt(0);
 				const rect = range.getBoundingClientRect();
 
@@ -54,11 +58,10 @@
 					buttonsContainerElement.style.display = 'block';
 
 					// Calculate space available on the right
-					const spaceOnRight = parentRect.width - (left + buttonsContainerElement.offsetWidth);
+					const spaceOnRight = parentRect.width - left;
+					let halfScreenWidth = $mobile ? window.innerWidth / 2 : window.innerWidth / 3;
 
-					let thirdScreenWidth = window.innerWidth / 3;
-
-					if (spaceOnRight < thirdScreenWidth) {
+					if (spaceOnRight < halfScreenWidth) {
 						const right = parentRect.right - rect.right;
 						buttonsContainerElement.style.right = `${right}px`;
 						buttonsContainerElement.style.left = 'auto'; // Reset left
@@ -67,7 +70,6 @@
 						buttonsContainerElement.style.left = `${left}px`;
 						buttonsContainerElement.style.right = 'auto'; // Reset right
 					}
-
 					buttonsContainerElement.style.top = `${top + 5}px`; // +5 to add some spacing
 				}
 			} else {
@@ -77,28 +79,14 @@
 	};
 
 	const closeFloatingButtons = () => {
+		const buttonsContainerElement = document.getElementById(`floating-buttons-${id}`);
 		if (buttonsContainerElement) {
 			buttonsContainerElement.style.display = 'none';
-			selectedText = '';
-			floatingInput = false;
-			floatingInputValue = '';
 		}
-	};
 
-	const selectAskHandler = () => {
-		dispatch('select', {
-			type: 'ask',
-			content: selectedText,
-			input: floatingInputValue
-		});
-
-		floatingInput = false;
-		floatingInputValue = '';
-		selectedText = '';
-
-		// Clear selection
-		window.getSelection().removeAllRanges();
-		buttonsContainerElement.style.display = 'none';
+		if (floatingButtonsElement) {
+			floatingButtonsElement.closeHandler();
+		}
 	};
 
 	const keydownHandler = (e) => {
@@ -130,7 +118,42 @@
 		{content}
 		{model}
 		{save}
+<<<<<<< HEAD
 		{bufferTime}
+=======
+		sourceIds={(sources ?? []).reduce((acc, s) => {
+			let ids = [];
+			s.document.forEach((document, index) => {
+				if (model?.info?.meta?.capabilities?.citations == false) {
+					ids.push('N/A');
+					return ids;
+				}
+
+				const metadata = s.metadata?.[index];
+				const id = metadata?.source ?? 'N/A';
+
+				if (metadata?.name) {
+					ids.push(metadata.name);
+					return ids;
+				}
+
+				if (id.startsWith('http://') || id.startsWith('https://')) {
+					ids.push(id);
+				} else {
+					ids.push(s?.source?.name ?? id);
+				}
+
+				return ids;
+			});
+
+			acc = [...acc, ...ids];
+
+			// remove duplicates
+			return acc.filter((item, index) => acc.indexOf(item) === index);
+		}, [])}
+		{onSourceClick}
+		{onTaskClick}
+>>>>>>> upstream/main
 		on:update={(e) => {
 			dispatch('update', e.detail);
 		}}
@@ -149,6 +172,7 @@
 	/>
 </div>
 
+<<<<<<< HEAD
 {#if floatingButtons}
 	<div
 		bind:this={buttonsContainerElement}
@@ -231,4 +255,18 @@
 			</div>
 		{/if}
 	</div>
+=======
+{#if floatingButtons && model}
+	<FloatingButtons
+		bind:this={floatingButtonsElement}
+		{id}
+		model={model?.id}
+		messages={createMessagesList(history, id)}
+		onAdd={({ modelId, parentId, messages }) => {
+			console.log(modelId, parentId, messages);
+			onAddMessages({ modelId, parentId, messages });
+			closeFloatingButtons();
+		}}
+	/>
+>>>>>>> upstream/main
 {/if}

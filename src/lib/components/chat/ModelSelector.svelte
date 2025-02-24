@@ -5,9 +5,7 @@
 	import Selector from './ModelSelector/Selector.svelte';
 	import Tooltip from '../common/Tooltip.svelte';
 
-	import { setDefaultModels } from '$lib/apis/configs';
 	import { updateUserSettings } from '$lib/apis/users';
-
 	const i18n = getContext('i18n');
 
 	export let selectedModels = [''];
@@ -64,10 +62,11 @@
 			<div class="overflow-hidden w-full">
 				<div class="mr-1 max-w-full">
 					<Selector
+						id={`${selectedModelIdx}`}
 						placeholder={$i18n.t('Select a model')}
 						bind:items={filteredItems}
 						showTemporaryChatControl={$user.role === 'user'
-							? ($config?.permissions?.chat?.temporary ?? true)
+							? ($user?.permissions?.chat?.temporary ?? true)
 							: true}
 						bind:value={selectedModel}
 					/>

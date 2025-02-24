@@ -12,7 +12,12 @@ from typing import Sequence, Union
 import sqlalchemy as sa
 from alembic import op
 
+<<<<<<< HEAD
 from open_webui.apps.webui.internal.db import JSONField
+=======
+import open_webui.internal.db
+from open_webui.internal.db import JSONField
+>>>>>>> upstream/main
 from open_webui.migrations.util import get_existing_tables
 
 # revision identifiers, used by Alembic.

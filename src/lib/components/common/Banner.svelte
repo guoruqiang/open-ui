@@ -4,8 +4,11 @@
 	import { fade } from 'svelte/transition';
 	import DOMPurify from 'dompurify';
 	import { marked } from 'marked';
+<<<<<<< HEAD
 	import { config, user } from '$lib/stores';
 	import dayjs from 'dayjs';
+=======
+>>>>>>> upstream/main
 
 	const dispatch = createEventDispatcher();
 	const i18n = getContext('i18n');
@@ -46,14 +49,14 @@
 {#if !dismissed}
 	{#if mounted}
 		<div
-			class=" top-0 left-0 right-0 p-2 mx-4 px-3 flex justify-center items-center relative rounded-xl border border-gray-50 dark:border-gray-850 text-gray-800 dark:text-gary-100 bg-white dark:bg-gray-900 backdrop-blur-xl z-30"
+			class=" top-0 left-0 right-0 p-2 mx-4 px-3 flex justify-center items-center relative rounded-xl border border-gray-100 dark:border-gray-850 text-gray-800 dark:text-gary-100 bg-white dark:bg-gray-900 backdrop-blur-xl z-30"
 			transition:fade={{ delay: 100, duration: 300 }}
 		>
 			<div class=" flex flex-col md:flex-row md:items-center flex-1 text-sm w-fit gap-1.5">
 				<div class="flex justify-between self-start">
 					<div
 						class=" text-xs font-bold {classNames[banner.type] ??
-							classNames['info']}  w-fit px-2 rounded uppercase line-clamp-1 mr-0.5"
+							classNames['info']}  w-fit px-2 rounded-sm uppercase line-clamp-1 mr-0.5"
 					>
 						{$i18n.t(banner.type[0]?.toUpperCase() + banner.type.slice(1))}
 					</div>
@@ -88,12 +91,16 @@
 				</div>
 
 				<div class="flex-1 text-xs text-gray-700 dark:text-white">
+<<<<<<< HEAD
 					{#if isExpiring === true && $config?.recharge_url}
 						😭 您的订阅将在 {dayjs($user?.expire_at * 1000).format('YYYY-MM-DD HH:mm')} 过期，请您
 						<a href={$config?.recharge_url} class="text-blue-500">点击续费</a>！
 					{:else}
 						{@html marked.parse(DOMPurify.sanitize(banner.content))}
 					{/if}
+=======
+					{@html marked.parse(DOMPurify.sanitize(banner.content))}
+>>>>>>> upstream/main
 				</div>
 			</div>
 

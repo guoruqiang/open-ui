@@ -9,7 +9,8 @@
 	export let showImagePreview = false;
 	export let preview_src_list: any[] = [];
 
-	export let className = ' w-full';
+	export let className = ' w-full outline-hidden focus:outline-hidden';
+	export let imageClassName = 'rounded-lg';
 
 	let _src = '';
 	$: _src = src.startsWith('/') ? `${WEBUI_BASE_URL}${src}` : src;
@@ -20,8 +21,19 @@
 	}
 </script>
 
+<<<<<<< HEAD
 <button class={className} on:click={openImagePreview}>
 	<img src={_src} {alt} class="rounded-lg cursor-pointer" draggable="false" data-cy="image" />
+=======
+<button
+	class={className}
+	on:click={() => {
+		showImagePreview = true;
+	}}
+	type="button"
+>
+	<img src={_src} {alt} class={imageClassName} draggable="false" data-cy="image" />
+>>>>>>> upstream/main
 </button>
 
 <ImagePreview bind:show={showImagePreview} src={_src} {alt} {isMarkdown} {preview_src_list} />

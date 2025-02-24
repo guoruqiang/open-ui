@@ -1,7 +1,15 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
 
+<<<<<<< HEAD:src/lib/components/chat/MessageInput/Commands/Documents.svelte
 	import { documents } from '$lib/stores';
+=======
+	import dayjs from 'dayjs';
+	import relativeTime from 'dayjs/plugin/relativeTime';
+	dayjs.extend(relativeTime);
+
+	import { createEventDispatcher, tick, getContext, onMount } from 'svelte';
+>>>>>>> upstream/main:src/lib/components/chat/MessageInput/Commands/Knowledge.svelte
 	import { removeLastWordFromString, isValidHttpUrl } from '$lib/utils';
 	import { tick, getContext } from 'svelte';
 	import { toast } from 'svelte-sonner';
@@ -80,7 +88,7 @@
 		dispatch('select', doc);
 
 		prompt = removeLastWordFromString(prompt, command);
-		const chatInputElement = document.getElementById('chat-textarea');
+		const chatInputElement = document.getElementById('chat-input');
 
 		await tick();
 		chatInputElement?.focus();
@@ -91,7 +99,7 @@
 		dispatch('url', url);
 
 		prompt = removeLastWordFromString(prompt, command);
-		const chatInputElement = document.getElementById('chat-textarea');
+		const chatInputElement = document.getElementById('chat-input');
 
 		await tick();
 		chatInputElement?.focus();
@@ -102,17 +110,101 @@
 		dispatch('youtube', url);
 
 		prompt = removeLastWordFromString(prompt, command);
-		const chatInputElement = document.getElementById('chat-textarea');
+		const chatInputElement = document.getElementById('chat-input');
 
 		await tick();
 		chatInputElement?.focus();
 		await tick();
 	};
+<<<<<<< HEAD:src/lib/components/chat/MessageInput/Commands/Documents.svelte
+=======
+
+	onMount(() => {
+		let legacy_documents = $knowledge
+			.filter((item) => item?.meta?.document)
+			.map((item) => ({
+				...item,
+				type: 'file'
+			}));
+
+		let legacy_collections =
+			legacy_documents.length > 0
+				? [
+						{
+							name: 'All Documents',
+							legacy: true,
+							type: 'collection',
+							description: 'Deprecated (legacy collection), please create a new knowledge base.',
+							title: $i18n.t('All Documents'),
+							collection_names: legacy_documents.map((item) => item.id)
+						},
+
+						...legacy_documents
+							.reduce((a, item) => {
+								return [...new Set([...a, ...(item?.meta?.tags ?? []).map((tag) => tag.name)])];
+							}, [])
+							.map((tag) => ({
+								name: tag,
+								legacy: true,
+								type: 'collection',
+								description: 'Deprecated (legacy collection), please create a new knowledge base.',
+								collection_names: legacy_documents
+									.filter((item) => (item?.meta?.tags ?? []).map((tag) => tag.name).includes(tag))
+									.map((item) => item.id)
+							}))
+					]
+				: [];
+
+		let collections = $knowledge
+			.filter((item) => !item?.meta?.document)
+			.map((item) => ({
+				...item,
+				type: 'collection'
+			}));
+		let collection_files =
+			$knowledge.length > 0
+				? [
+						...$knowledge
+							.reduce((a, item) => {
+								return [
+									...new Set([
+										...a,
+										...(item?.files ?? []).map((file) => ({
+											...file,
+											collection: { name: item.name, description: item.description } // DO NOT REMOVE, USED IN FILE DESCRIPTION/ATTACHMENT
+										}))
+									])
+								];
+							}, [])
+							.map((file) => ({
+								...file,
+								name: file?.meta?.name,
+								description: `${file?.collection?.name} - ${file?.collection?.description}`,
+								type: 'file'
+							}))
+					]
+				: [];
+
+		items = [...collections, ...collection_files, ...legacy_collections, ...legacy_documents].map(
+			(item) => {
+				return {
+					...item,
+					...(item?.legacy || item?.meta?.legacy || item?.meta?.document ? { legacy: true } : {})
+				};
+			}
+		);
+
+		fuse = new Fuse(items, {
+			keys: ['name', 'description']
+		});
+	});
+>>>>>>> upstream/main:src/lib/components/chat/MessageInput/Commands/Knowledge.svelte
 </script>
 
 {#if filteredItems.length > 0 || prompt.split(' ')?.at(0)?.substring(1).startsWith('http')}
 	<div
 		id="commands-container"
+<<<<<<< HEAD:src/lib/components/chat/MessageInput/Commands/Documents.svelte
 		class="pl-1 pr-12 mb-3 text-left w-full absolute bottom-0 left-0 right-0 z-10"
 	>
 		<div class="flex w-full dark:border dark:border-gray-850 rounded-lg">
@@ -120,13 +212,23 @@
 				<div class=" text-lg font-semibold mt-2">#</div>
 			</div>
 
+=======
+		class="px-2 mb-2 text-left w-full absolute bottom-0 left-0 right-0 z-10"
+	>
+		<div class="flex w-full rounded-xl border border-gray-100 dark:border-gray-850">
+>>>>>>> upstream/main:src/lib/components/chat/MessageInput/Commands/Knowledge.svelte
 			<div
-				class="max-h-60 flex flex-col w-full rounded-r-xl bg-white dark:bg-gray-900 dark:text-gray-100"
+				class="max-h-60 flex flex-col w-full rounded-xl bg-white dark:bg-gray-900 dark:text-gray-100"
 			>
 				<div class="m-1 overflow-y-auto p-1 rounded-r-xl space-y-0.5 scrollbar-hidden">
 					{#each filteredItems as doc, docIdx}
 						<button
+<<<<<<< HEAD:src/lib/components/chat/MessageInput/Commands/Documents.svelte
 							class=" px-3 py-1.5 rounded-xl w-full text-left {docIdx === selectedIdx
+=======
+							class=" px-3 py-1.5 rounded-xl w-full text-left flex justify-between items-center {idx ===
+							selectedIdx
+>>>>>>> upstream/main:src/lib/components/chat/MessageInput/Commands/Knowledge.svelte
 								? ' bg-gray-50 dark:bg-gray-850 dark:text-gray-100 selected-command-option-button'
 								: ''}"
 							type="button"
@@ -138,8 +240,8 @@
 							on:mousemove={() => {
 								selectedIdx = docIdx;
 							}}
-							on:focus={() => {}}
 						>
+<<<<<<< HEAD:src/lib/components/chat/MessageInput/Commands/Documents.svelte
 							{#if doc.type === 'collection'}
 								<div class=" font-medium text-black dark:text-gray-100 line-clamp-1">
 									{doc?.title ?? `#${doc.name}`}
@@ -157,7 +259,88 @@
 									{doc.title}
 								</div>
 							{/if}
+=======
+							<div>
+								<div class=" font-medium text-black dark:text-gray-100 flex items-center gap-1">
+									{#if item.legacy}
+										<div
+											class="bg-gray-500/20 text-gray-700 dark:text-gray-200 rounded-sm uppercase text-xs font-bold px-1 shrink-0"
+										>
+											Legacy
+										</div>
+									{:else if item?.meta?.document}
+										<div
+											class="bg-gray-500/20 text-gray-700 dark:text-gray-200 rounded-sm uppercase text-xs font-bold px-1 shrink-0"
+										>
+											Document
+										</div>
+									{:else if item?.type === 'file'}
+										<div
+											class="bg-gray-500/20 text-gray-700 dark:text-gray-200 rounded-sm uppercase text-xs font-bold px-1 shrink-0"
+										>
+											File
+										</div>
+									{:else}
+										<div
+											class="bg-green-500/20 text-green-700 dark:text-green-200 rounded-sm uppercase text-xs font-bold px-1 shrink-0"
+										>
+											Collection
+										</div>
+									{/if}
+
+									<div class="line-clamp-1">
+										{item?.name}
+									</div>
+								</div>
+
+								<div class=" text-xs text-gray-600 dark:text-gray-100 line-clamp-1">
+									{item?.description}
+								</div>
+							</div>
+>>>>>>> upstream/main:src/lib/components/chat/MessageInput/Commands/Knowledge.svelte
 						</button>
+
+						<!-- <div slot="content" class=" pl-2 pt-1 flex flex-col gap-0.5">
+								{#if !item.legacy && (item?.files ?? []).length > 0}
+									{#each item?.files ?? [] as file, fileIdx}
+										<button
+											class=" px-3 py-1.5 rounded-xl w-full text-left flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-850 dark:hover:text-gray-100 selected-command-option-button"
+											type="button"
+											on:click={() => {
+												console.log(file);
+											}}
+											on:mousemove={() => {
+												selectedIdx = idx;
+											}}
+										>
+											<div>
+												<div
+													class=" font-medium text-black dark:text-gray-100 flex items-center gap-1"
+												>
+													<div
+														class="bg-gray-500/20 text-gray-700 dark:text-gray-200 rounded-sm uppercase text-xs font-bold px-1 shrink-0"
+													>
+														File
+													</div>
+
+													<div class="line-clamp-1">
+														{file?.meta?.name}
+													</div>
+												</div>
+
+												<div class=" text-xs text-gray-600 dark:text-gray-100 line-clamp-1">
+													{$i18n.t('Updated')}
+													{dayjs(file.updated_at * 1000).fromNow()}
+												</div>
+											</div>
+										</button>
+									{/each}
+								{:else}
+									<div class=" text-gray-500 text-xs mt-1 mb-2">
+										{$i18n.t('No files found.')}
+									</div>
+								{/if}
+							</div> -->
 					{/each}
 
 					{#if prompt

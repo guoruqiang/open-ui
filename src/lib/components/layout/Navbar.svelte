@@ -11,6 +11,7 @@
 		showArchivedChats,
 		showControls,
 		showSidebar,
+		temporaryChatEnabled,
 		user
 	} from '$lib/stores';
 
@@ -24,6 +25,9 @@
 	import MenuLines from '../icons/MenuLines.svelte';
 	import AdjustmentsHorizontal from '../icons/AdjustmentsHorizontal.svelte';
 	import Map from '../icons/Map.svelte';
+	import { stringify } from 'postcss';
+	import PencilSquare from '../icons/PencilSquare.svelte';
+	import Plus from '../icons/Plus.svelte';
 
 	const i18n = getContext('i18n');
 
@@ -41,17 +45,17 @@
 
 <ShareChatModal bind:show={showShareChatModal} chatId={$chatId} />
 
-<div class="sticky top-0 z-30 w-full px-1 py-2 -mb-8 flex items-center">
+<div class="sticky top-0 z-30 w-full px-1.5 py-1.5 -mb-8 flex items-center">
 	<div
-		class=" bg-gradient-to-b via-50% from-white via-white to-transparent dark:from-gray-900 dark:via-gray-900 dark:to-transparent pointer-events-none absolute inset-0 -bottom-7 z-[-1] blur"
+		class=" bg-linear-to-b via-50% from-white via-white to-transparent dark:from-gray-900 dark:via-gray-900 dark:to-transparent pointer-events-none absolute inset-0 -bottom-7 z-[-1]"
 	></div>
 
-	<div class=" flex max-w-full w-full mx-auto px-5 pt-0.5 md:px-[1rem] bg-transparen">
+	<div class=" flex max-w-full w-full mx-auto px-1 pt-0.5 bg-transparent">
 		<div class="flex items-center w-full max-w-full">
 			<div
 				class="{$showSidebar
 					? 'md:hidden'
-					: ''} mr-3 self-start flex flex-none items-center text-gray-600 dark:text-gray-400"
+					: ''} mr-1 self-start flex flex-none items-center text-gray-600 dark:text-gray-400"
 			>
 				<button
 					id="sidebar-toggle-button"
@@ -67,7 +71,11 @@
 				</button>
 			</div>
 
-			<div class="flex-1 overflow-hidden max-w-full">
+			<div
+				class="flex-1 overflow-hidden max-w-full py-0.5
+			{$showSidebar ? 'ml-1' : ''}
+			"
+			>
 				{#if showModelSelector}
 					<ModelSelector bind:selectedModels showSetDefault={!shareEnabled} />
 				{/if}
@@ -75,8 +83,7 @@
 
 			<div class="self-start flex flex-none items-center text-gray-600 dark:text-gray-400">
 				<!-- <div class="md:hidden flex self-center w-[1px] h-5 mx-2 bg-gray-300 dark:bg-stone-700" /> -->
-
-				{#if shareEnabled && chat && chat.id}
+				{#if shareEnabled && chat && (chat.id || $temporaryChatEnabled)}
 					<Menu
 						{chat}
 						{shareEnabled}
@@ -109,6 +116,20 @@
 							</div>
 						</button>
 					</Menu>
+				{:else if $mobile}
+					<Tooltip content={$i18n.t('Controls')}>
+						<button
+							class=" flex cursor-pointer px-2 py-2 rounded-xl hover:bg-gray-50 dark:hover:bg-gray-850 transition"
+							on:click={async () => {
+								await showControls.set(!$showControls);
+							}}
+							aria-label="Controls"
+						>
+							<div class=" m-auto self-center">
+								<AdjustmentsHorizontal className=" size-5" strokeWidth="0.5" />
+							</div>
+						</button>
+					</Tooltip>
 				{/if}
 
 				{#if !$mobile}
@@ -140,6 +161,7 @@
 						aria-label="New Chat"
 					>
 						<div class=" m-auto self-center">
+<<<<<<< HEAD
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								fill="none"
@@ -154,6 +176,9 @@
 								>
 								</path>
 							</svg>
+=======
+							<PencilSquare className=" size-5" strokeWidth="2" />
+>>>>>>> upstream/main
 						</div>
 					</button>
 				</Tooltip>

@@ -20,10 +20,23 @@ class ERROR_MESSAGES(str, Enum):
     def __str__(self) -> str:
         return super().__str__()
 
+<<<<<<< HEAD
     DEFAULT = lambda err="": f"出错了 :/\n{err if err else ''}"
     ENV_VAR_NOT_FOUND = "找不到必需的环境变量，程序即将终止。"
     CREATE_USER_ERROR = (
         "糟糕！创建账户时出现问题。请稍后再试。如果问题仍然存在，请联系客服寻求帮助。"
+=======
+    DEFAULT = (
+        lambda err="": f'{"Something went wrong :/" if err == "" else "[ERROR: " + str(err) + "]"}'
+    )
+    ENV_VAR_NOT_FOUND = "Required environment variable not found. Terminating now."
+    CREATE_USER_ERROR = "Oops! Something went wrong while creating your account. Please try again later. If the issue persists, contact support for assistance."
+    DELETE_USER_ERROR = "Oops! Something went wrong. We encountered an issue while trying to delete the user. Please give it another shot."
+    EMAIL_MISMATCH = "Uh-oh! This email does not match the email your provider is registered with. Please check your email and try again."
+    EMAIL_TAKEN = "Uh-oh! This email is already registered. Sign in with your existing account or choose another email to start anew."
+    USERNAME_TAKEN = (
+        "Uh-oh! This username is already registered. Please choose another username."
+>>>>>>> upstream/main
     )
     DELETE_USER_ERROR = "糟糕！删除用户时遇到问题。请再试一次。"
     EMAIL_MISMATCH = "哎呀！此邮箱与您提供商注册的邮箱不匹配。请检查您的邮箱并重试。"
@@ -61,11 +74,21 @@ class ERROR_MESSAGES(str, Enum):
         "糟糕！好像出错了。API 密钥丢失。请确保提供有效的 API 密钥以访问此功能。"
     )
 
+<<<<<<< HEAD
     MALICIOUS = "检测到异常活动，请稍后再试。"
 
     PANDOC_NOT_INSTALLED = "服务器上未安装 Pandoc。请联系您的管理员寻求帮助。"
     INCORRECT_FORMAT = lambda err="": f"格式无效。请使用正确的格式{err}"
     RATE_LIMIT_EXCEEDED = "API 速率限制已超出"
+=======
+    FILE_NOT_SENT = "FILE_NOT_SENT"
+    FILE_NOT_SUPPORTED = "Oops! It seems like the file format you're trying to upload is not supported. Please upload a file with a supported format and try again."
+
+    NOT_FOUND = "We could not find what you're looking for :/"
+    USER_NOT_FOUND = "We could not find what you're looking for :/"
+    API_KEY_NOT_FOUND = "Oops! It looks like there's a hiccup. The API key is missing. Please make sure to provide a valid API key to access this feature."
+    API_KEY_NOT_ALLOWED = "Use of API key is not enabled in the environment."
+>>>>>>> upstream/main
 
     MODEL_NOT_FOUND = lambda name="": f"找不到模型 '{name}'"
     OPENAI_NOT_FOUND = lambda name="": "未找到 OpenAI API"
@@ -74,7 +97,15 @@ class ERROR_MESSAGES(str, Enum):
 
     EMPTY_CONTENT = "提供的内容为空。请确保在继续操作之前存在文本或数据。"
 
+<<<<<<< HEAD
     DB_NOT_SQLITE = "此功能仅在运行 SQLite 数据库时可用。"
+=======
+    MODEL_NOT_FOUND = lambda name="": f"Model '{name}' was not found"
+    OPENAI_NOT_FOUND = lambda name="": "OpenAI API was not found"
+    OLLAMA_NOT_FOUND = "WebUI could not connect to Ollama"
+    CREATE_API_KEY_ERROR = "Oops! Something went wrong while creating your API key. Please try again later. If the issue persists, contact support for assistance."
+    API_KEY_CREATION_NOT_ALLOWED = "API key creation is not allowed in the environment."
+>>>>>>> upstream/main
 
     INVALID_URL = "糟糕！您提供的 URL 无效。请仔细检查并重试。"
 
@@ -98,7 +129,10 @@ class TASKS(str, Enum):
 
     DEFAULT = lambda task="": f"{task if task else 'generation'}"
     TITLE_GENERATION = "title_generation"
+    TAGS_GENERATION = "tags_generation"
     EMOJI_GENERATION = "emoji_generation"
     QUERY_GENERATION = "query_generation"
+    IMAGE_PROMPT_GENERATION = "image_prompt_generation"
+    AUTOCOMPLETE_GENERATION = "autocomplete_generation"
     FUNCTION_CALLING = "function_calling"
     MOA_RESPONSE_GENERATION = "moa_response_generation"

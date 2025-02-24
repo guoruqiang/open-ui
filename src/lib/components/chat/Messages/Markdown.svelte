@@ -17,6 +17,11 @@
 	export let save = false;
 	export let bufferTime = 30;
 
+	export let sourceIds = [];
+
+	export let onSourceClick = () => {};
+	export let onTaskClick = () => {};
+
 	let tokens = [];
 
 	const options = {
@@ -37,7 +42,7 @@
 		} else {
 			// 当消息为空或者消息收到Done返回"" 的时候，直接显示
 			tokens = marked.lexer(
-				replaceTokens(processResponseContent(content), model?.name, $user?.name)
+				replaceTokens(processResponseContent(content), sourceIds, model?.name, $user?.name)
 			);
 		}
 	})();
@@ -48,6 +53,8 @@
 		{tokens}
 		{id}
 		{save}
+		{onTaskClick}
+		{onSourceClick}
 		on:update={(e) => {
 			dispatch('update', e.detail);
 		}}
